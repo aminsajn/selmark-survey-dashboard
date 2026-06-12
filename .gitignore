@@ -1,0 +1,11 @@
+*.json
+*.csv
+*.docx
+__pycache__/
+*.pyc
+.env
+decode_jwt.py
+test_*.py
+review_*.py
+compare_rules.py
+gen_fallos.py
