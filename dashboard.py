@@ -19,7 +19,7 @@ st.set_page_config(
 )
 
 # ── PASSWORD GATE ─────────────────────────────────────────────────────────────
-PASSWORD = "CintSelmark2026"
+PASSWORD = st.secrets.get("DASHBOARD_PASSWORD", "")
 
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
