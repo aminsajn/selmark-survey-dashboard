@@ -18,6 +18,23 @@ st.set_page_config(
     layout='wide',
 )
 
+# ── PASSWORD GATE ─────────────────────────────────────────────────────────────
+PASSWORD = "CintSelmark2026"
+
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title('📊 Selmark Survey — Quota Progress')
+    pwd = st.text_input('Password', type='password')
+    if st.button('Enter'):
+        if pwd == PASSWORD:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error('Incorrect password.')
+    st.stop()
+
 # ── CONSTANTS ─────────────────────────────────────────────────────────────────
 TOTAL_TARGET = 1200
 AGE_QUOTAS = {
