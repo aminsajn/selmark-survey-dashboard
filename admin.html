@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Selmark Surveys</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body style="background:#F8FBFE">
+
+<!-- ── Login ─────────────────────────────────────────────── -->
+<div id="login-wrap" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px">
+  <div style="background:#fff;border:1px solid #C8DCF0;border-radius:8px;padding:40px 32px;max-width:360px;width:100%;text-align:center">
+    <div style="font-family:Georgia,serif;font-size:20px;color:#2B7BB9;margin-bottom:6px">Panel de administración</div>
+    <div style="font-size:12px;color:#6B6B6B;margin-bottom:28px;letter-spacing:0.04em">SELMARK SURVEYS</div>
+    <input type="email" id="email-input" class="input-text" placeholder="Email"
+      style="margin-bottom:10px;text-align:center"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="password" id="pw-input" class="input-text" placeholder="Contraseña"
+      style="margin-bottom:12px;text-align:center"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn-next" style="width:100%" onclick="doLogin()">Acceder</button>
+    <div id="pw-error" style="font-size:12px;color:#C62828;margin-top:10px;min-height:18px"></div>
+  </div>
+</div>
+
+<!-- ── Panel ──────────────────────────────────────────────── -->
+<div id="admin-panel" style="display:none">
+  <div class="admin-wrap">
+    <h1>Panel de administración</h1>
+
+    <!-- Toolbar -->
+    <div class="admin-toolbar">
+      <select class="admin-select" id="filter-survey" onchange="loadData()">
+        <option value="">Todas las encuestas</option>
+        <option value="lingerie-swim">Lencería y Baño</option>
+        <option value="sport-loungewear">Deporte y Homewear</option>
+      </select>
+      <select class="admin-select" id="filter-status" onchange="loadData()">
+        <option value="complete">Completadas</option>
+        <option value="">Todos los estados</option>
+        <option value="in_progress">En curso</option>
+        <option value="screenout">Screenout</option>
+      </select>
+      <select class="admin-select" id="filter-quality" onchange="renderTable()">
+        <option value="">Todas las calidades</option>
+        <option value="valid">Solo válidas</option>
+        <option value="suspect">Solo a revisar</option>
+      </select>
+      <button class="btn-admin outline" onclick="loadData()">Actualizar</button>
+      <button class="btn-admin primary" onclick="downloadCSV()">Descargar CSV</button>
+      <button class="btn-admin outline" onclick="downloadJSON()">Descargar JSON</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="admin-stats" id="stats-row">
+      <div class="stat-card"><div class="stat-val" id="stat-total">—</div><div class="stat-label">Total cargadas</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-valid" style="color:#2d6a4f">—</div><div class="stat-label">Válidas</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-suspect" style="color:#92400e">—</div><div class="stat-label">A revisar</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-avg-time">—</div><div class="stat-label">Tiempo medio</div></div>
+    </div>
+
+    <!-- Quality legend -->
+    <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6B6B6B">
+        <span class="badge valid">Válida</span>
+        Pasa todos los controles de calidad
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6B6B6B">
+        <span class="badge suspect">Revisar</span>
+        Tiempo &lt; 8 min o straight-lining detectado — incluida pero etiquetada
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="admin-table-wrap">
+      <table class="admin-table" id="data-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Encuesta</th>
+            <th>Respondente</th>
+            <th>Estado</th>
+            <th>Duración</th>
+            <th>Calidad</th>
+            <th>Motivo</th>
+            <th>Ver</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="8" style="text-align:center;color:#6B6B6B;padding:32px">Introduce la contraseña para cargar datos</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Detail modal -->
+<div id="detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:300;overflow-y:auto;padding:24px">
+  <div style="background:#fff;max-width:720px;margin:0 auto;border-radius:8px;padding:28px;position:relative">
+    <button onclick="closeModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#6B6B6B">×</button>
+    <h2 style="font-family:Georgia,serif;font-size:18px;color:#2B7BB9;font-weight:normal;margin-bottom:20px">Detalle de respuesta</h2>
+    <div id="detail-content" style="font-size:13px;line-height:1.7"></div>
+  </div>
+</div>
+
+<script>
+// ── Supabase client ───────────────────────────────────────
+const _sb = supabase.createClient(
+  'https://ytmcbkgrnaytbxzkcwyc.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bWNia2dybmF5dGJ4emtjd3ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NzQxNjEsImV4cCI6MjA5NjA1MDE2MX0.UFne_7Kz_CrOciODsrh1S4Yqpzqit_kXx2JBqtzvWok'
+);
+
+// ── Estado ────────────────────────────────────────────────
+let _allData = [];
+let _assessed = []; // data + quality assessment
+
+// ── Reglas de calidad ─────────────────────────────────────
+const MIN_SECONDS = 8 * 60; // 8 minutos
+
+// Claves de escala por encuesta (lifestyle + atributos)
+const SCALE_KEYS = {
+  'lingerie-swim': {
+    lifestyle: ['q6','q7','q8','q9','q10','q11','q12','q13','q14','q15','q16','q17'],
+    attrs:     ['q54_1','q54_2','q54_3','q54_4','q54_5','q54_6',
+                'q55_1','q55_2','q55_3','q55_4','q55_5','q55_6','q55_7'],
+  },
+  'sport-loungewear': {
+    lifestyle: ['q5','q6','q7','q8','q9','q10','q11','q12','q13','q14','q15','q16'],
+    attrs:     ['q57_1','q57_2','q57_3','q57_4','q57_5','q57_6','q57_7',
+                'q57_8','q57_9','q57_10','q57_11','q57_12',
+                'q58_1','q58_2','q58_3','q58_4','q58_5','q58_6','q58_7'],
+  },
+};
+
+function assessQuality(row) {
+  const issues = [];
+  const a = row.answers || {};
+
+  // 1. TIEMPO
+  let durationSec = null;
+  if (row.completed_at && row.created_at) {
+    durationSec = (new Date(row.completed_at) - new Date(row.created_at)) / 1000;
+    if (durationSec < MIN_SECONDS) {
+      const m = Math.floor(durationSec / 60);
+      const s = Math.round(durationSec % 60);
+      issues.push(`Tiempo: ${m}m ${s}s — mínimo 8 min`);
+    }
+  }
+
+  // 2. STRAIGHT-LINING — escalas de lifestyle
+  const keys = SCALE_KEYS[row.survey_id];
+  if (keys) {
+    const lsVals = keys.lifestyle.map(k => a[k]).filter(v => v != null);
+    if (lsVals.length >= 8 && new Set(lsVals.map(String)).size === 1) {
+      issues.push(`Straight-lining lifestyle: todos = ${lsVals[0]}`);
+    }
+
+    // 3. STRAIGHT-LINING — escalas de atributos
+    const attrVals = keys.attrs.map(k => a[k]).filter(v => v != null);
+    if (attrVals.length >= 8 && new Set(attrVals.map(String)).size === 1) {
+      issues.push(`Straight-lining atributos: todos = ${attrVals[0]}`);
+    }
+  }
+
+  const valid = issues.length === 0;
+  return {
+    level:    valid ? 'valid' : 'suspect',
+    label:    valid ? 'Válida' : 'Revisar',
+    duration: durationSec,
+    issues,
+  };
+}
+
+function fmtDuration(sec) {
+  if (sec === null || sec === undefined) return '—';
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return `${m}m ${s.toString().padStart(2,'0')}s`;
+}
+
+// ── Login ─────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('email-input').value.trim();
+  const pwd   = document.getElementById('pw-input').value;
+  if (!email || !pwd) return;
+  const errEl = document.getElementById('pw-error');
+  errEl.textContent = 'Verificando...';
+  try {
+    const { error } = await _sb.auth.signInWithPassword({ email, password: pwd });
+    if (error) throw new Error('Email o contraseña incorrectos');
+    document.getElementById('login-wrap').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    loadData();
+  } catch (e) {
+    errEl.textContent = e.message || 'Error al conectar';
+  }
+}
+
+// ── Cargar datos (con paginación para superar el límite de 1000) ──────────────
+async function loadData() {
+  const surveyFilter = document.getElementById('filter-survey')?.value || '';
+  const statusFilter = document.getElementById('filter-status')?.value  || '';
+  document.getElementById('table-body').innerHTML =
+    '<tr><td colspan="8" style="text-align:center;color:#6B6B6B;padding:24px">Cargando...</td></tr>';
+  try {
+    const PAGE = 1000;
+    let allRows = [], offset = 0;
+    while (true) {
+      let query = _sb.from('survey_responses').select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + PAGE - 1);
+      if (surveyFilter) query = query.eq('survey_id', surveyFilter);
+      if (statusFilter) query = query.eq('status', statusFilter);
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      allRows = allRows.concat(data || []);
+      if (!data || data.length < PAGE) break;
+      offset += PAGE;
+    }
+    _allData = allRows;
+    applyAssessments();
+    renderTable();
+    updateStats();
+  } catch (e) {
+    document.getElementById('table-body').innerHTML =
+      `<tr><td colspan="8" style="text-align:center;color:#C62828;padding:24px">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function applyAssessments() {
+  _assessed = _allData.map(row => ({ ...row, _q: assessQuality(row) }));
+}
+
+// ── Renderizar tabla ──────────────────────────────────────
+function renderTable() {
+  const qualityFilter = document.getElementById('filter-quality')?.value || '';
+  const surveyLabels = { 'lingerie-swim': 'Lencería & Baño', 'sport-loungewear': 'Deporte & Homewear' };
+
+  let rows = _assessed;
+  if (qualityFilter) rows = rows.filter(r => r._q.level === qualityFilter);
+
+  if (!rows.length) {
+    document.getElementById('table-body').innerHTML =
+      '<tr><td colspan="8" style="text-align:center;color:#6B6B6B;padding:32px">No hay datos con los filtros seleccionados.</td></tr>';
+    return;
+  }
+
+  document.getElementById('table-body').innerHTML = rows.map((row, i) => {
+    const date = new Date(row.created_at).toLocaleString('es-ES', {dateStyle:'short', timeStyle:'short'});
+    const q = row._q;
+    const issueText = q.issues.length ? q.issues.join(' | ') : '—';
+    return `<tr>
+      <td>${date}</td>
+      <td>${surveyLabels[row.survey_id] || row.survey_id}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis">${row.respondent_id || '—'}</td>
+      <td><span class="badge ${row.status}">${row.status}</span></td>
+      <td>${fmtDuration(q.duration)}</td>
+      <td><span class="badge ${q.level}">${q.label}</span></td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:#6B6B6B" title="${issueText}">${issueText}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-admin outline" style="padding:4px 10px;font-size:12px" onclick="showDetail(${i})">Ver</button>
+        <button class="btn-admin outline" style="padding:4px 10px;font-size:12px;color:#C62828;border-color:#C62828;margin-left:4px" onclick="deleteRow('${row.id}', this)">Borrar</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Estadísticas ──────────────────────────────────────────
+function updateStats() {
+  const total   = _assessed.length;
+  const valid   = _assessed.filter(r => r._q.level === 'valid').length;
+  const suspect = _assessed.filter(r => r._q.level === 'suspect').length;
+  const durations = _assessed.map(r => r._q.duration).filter(d => d !== null && d !== undefined);
+  const avgSec = durations.length ? durations.reduce((a,b) => a+b, 0) / durations.length : null;
+
+  document.getElementById('stat-total').textContent   = total;
+  document.getElementById('stat-valid').textContent   = valid;
+  document.getElementById('stat-suspect').textContent = suspect;
+  document.getElementById('stat-avg-time').textContent = fmtDuration(avgSec);
+}
+
+// ── Detalle ───────────────────────────────────────────────
+function showDetail(idx) {
+  const row = _assessed[idx];
+  if (!row) return;
+  const q = row._q;
+  const answers = row.answers || {};
+  let html = `<div style="margin-bottom:16px;padding:10px 14px;background:${q.level==='valid'?'#e8f5e9':'#fef3c7'};border-radius:6px;font-size:13px">
+    <strong>Calidad:</strong> ${q.label} &nbsp;|&nbsp;
+    <strong>Duración:</strong> ${fmtDuration(q.duration)}
+    ${q.issues.length ? '<br><span style="color:#92400e">' + q.issues.join('<br>') + '</span>' : ''}
+  </div>`;
+  html += `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <tr style="background:#EDF5FC"><th style="padding:6px 10px;text-align:left">Campo</th><th style="padding:6px 10px;text-align:left">Respuesta</th></tr>
+    <tr><td style="padding:5px 10px;border-top:1px solid #C8DCF0;color:#6B6B6B">survey_id</td><td style="padding:5px 10px;border-top:1px solid #C8DCF0">${row.survey_id}</td></tr>
+    <tr><td style="padding:5px 10px;border-top:1px solid #C8DCF0;color:#6B6B6B">respondent_id</td><td style="padding:5px 10px;border-top:1px solid #C8DCF0">${row.respondent_id || '—'}</td></tr>
+    <tr><td style="padding:5px 10px;border-top:1px solid #C8DCF0;color:#6B6B6B">status</td><td style="padding:5px 10px;border-top:1px solid #C8DCF0">${row.status}</td></tr>
+    <tr><td style="padding:5px 10px;border-top:1px solid #C8DCF0;color:#6B6B6B">created_at</td><td style="padding:5px 10px;border-top:1px solid #C8DCF0">${new Date(row.created_at).toLocaleString('es-ES')}</td></tr>
+    <tr><td style="padding:5px 10px;border-top:1px solid #C8DCF0;color:#6B6B6B">completed_at</td><td style="padding:5px 10px;border-top:1px solid #C8DCF0">${row.completed_at ? new Date(row.completed_at).toLocaleString('es-ES') : '—'}</td></tr>`;
+  Object.entries(answers).forEach(([k, v]) => {
+    const display = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    html += `<tr><td style="padding:5px 10px;border-top:1px solid #C8DCF0;color:#6B6B6B;font-family:monospace">${k}</td><td style="padding:5px 10px;border-top:1px solid #C8DCF0;max-width:400px;word-break:break-word">${display}</td></tr>`;
+  });
+  html += '</table>';
+  document.getElementById('detail-content').innerHTML = html;
+  document.getElementById('detail-modal').style.display = 'block';
+}
+function closeModal() { document.getElementById('detail-modal').style.display = 'none'; }
+
+// ── Eliminar respuesta ────────────────────────────────────
+async function deleteRow(id, btn) {
+  if (!confirm('¿Seguro que quieres eliminar esta respuesta? Esta acción no se puede deshacer.')) return;
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    const { error } = await _sb.from('survey_responses').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    // Eliminar de los arrays locales y refrescar tabla
+    _allData   = _allData.filter(r => r.id !== id);
+    _assessed  = _assessed.filter(r => r.id !== id);
+    renderTable();
+    updateStats();
+  } catch(e) {
+    alert('Error al eliminar: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Borrar';
+  }
+}
+
+// ── Exportar ──────────────────────────────────────────────
+function getExportData() {
+  const qualityFilter = document.getElementById('filter-quality')?.value || '';
+  let rows = _assessed;
+  if (qualityFilter) rows = rows.filter(r => r._q.level === qualityFilter);
+  return rows;
+}
+
+// ── Mapa de etiquetas por encuesta ────────────────────────
+const QUESTION_LABELS = {
+  'lingerie-swim': {
+    q1:'Código postal', q2:'Edad', q3:'Renta anual hogar', q4:'Situación familiar',
+    q6:'Lifestyle: cuesta cambiar de marca', q7:'Lifestyle: siempre mismo supermercado',
+    q8:'Lifestyle: prefiere planes tranquilos', q9:'Lifestyle: busca marcas para percepción',
+    q10:'Lifestyle: elige restaurante por reputación', q11:'Lifestyle: invierte en cultura/viajes',
+    q12:'Lifestyle: sin estilo definido', q13:'Lifestyle: prueba restaurantes nuevos',
+    q14:'Lifestyle: se adapta fácilmente', q15:'Lifestyle: valora origen/impacto',
+    q16:'Lifestyle: prefiere actividades con aporte', q17:'Lifestyle: prefiere experiencia a anillo',
+    q18:'Última compra lencería', q19:'Última compra baño',
+    q20:'Frecuencia compra ropa', q21:'Última compra moda',
+    q22:'Gasto lencería por compra', q23:'Gasto baño por compra',
+    q24:'Marca más cara último año', q25:'Gasto mensual en ropa',
+    q26_d1:'Dicotomía: Playa vs Montaña', q26_d2:'Dicotomía: Colores neutros vs Vividos',
+    q26_d3:'Dicotomía: Con estampado vs Sin estampado', q26_d4:'Dicotomía: Con diseño vs Básico',
+    q26_d5:'Dicotomía: Producto duradero vs Estar a la moda',
+    q27:'Bañadores en armario', q28:'Bañadores usados por temporada',
+    q29:'Compra bañadores nuevos para verano', q30:'Aprovecha rebajas post verano',
+    q31:'Motivos compra ropa (últimos 12m)', q32:'Momentos compra ropa',
+    q33:'Talla pantalón', q34:'Talla camiseta', q35:'Talla sujetador',
+    q36:'Dificultad para encontrar talla', q37:'Motivo dificultad talla',
+    q38:'Factores más valorados en compra', q39:'Factores que frenan la compra',
+    q40:'Canal físico lencería', q41:'Canal físico baño',
+    q42:'Compra lencería/baño online', q43:'Canal online lencería',
+    q44:'Canal online baño', q45:'Qué valora al comprar (cualquier canal)',
+    q46:'Experiencia compra lencería', q47:'Experiencia compra baño',
+    q48:'Experiencia digital lencería/baño',
+    q49:'Top of mind lencería (1ª marca)', q50:'Otras marcas lencería recordadas',
+    q51:'Marcas donde compra lencería', q53:'Marca favorita lencería y motivo',
+    q54_1:'Func. lenc.: Ajuste y sujeción', q54_2:'Func. lenc.: Duración',
+    q54_3:'Func. lenc.: Variedad tallas', q54_4:'Func. lenc.: Cómoda',
+    q54_5:'Func. lenc.: Relación calidad-precio', q54_6:'Func. lenc.: Suavidad tejido',
+    q55_1:'Emoc. lenc.: Estética', q55_2:'Emoc. lenc.: Moderna',
+    q55_3:'Emoc. lenc.: Refleja personalidad', q55_4:'Emoc. lenc.: Destaca',
+    q55_5:'Emoc. lenc.: Identificación marca', q55_6:'Emoc. lenc.: Diseño',
+    q55_7:'Emoc. lenc.: Marca especialista',
+    q56:'Visibilidad lencería (ranking canales)', q57:'Influencer lencería (sí/no)',
+    q57_quien:'Influencer lencería (nombre)', q58:'Opinión Pilar Rubio',
+    q59:'Top of mind baño (1ª marca)', q60:'Otras marcas baño recordadas',
+    q61:'Marcas donde compra baño', q63:'Marca favorita baño y motivo',
+    q64:'Atributos valorados en baño',
+    q65:'Visibilidad baño (ranking canales)', q66:'Influencer baño (sí/no)',
+    q66_quien:'Influencer baño (nombre)',
+    q67:'Colores favoritos lencería', q68:'Combinaciones colores lencería',
+    q69_select:'Producto lencería elegido', q70:'Por qué le gusta más (lenc.)',
+    q71:'Por qué los otros gustan menos (lenc.)',
+    q72:'Colores favoritos baño', q73:'Combinaciones colores baño',
+    q74_select:'Producto baño elegido', q75:'Por qué le gusta más (baño)',
+    q76:'Por qué los otros gustan menos (baño)',
+    producto_mostrado:'Tríada de producto mostrada',
+  },
+  'sport-loungewear': {
+    q1:'Código postal', q2:'Edad', q3:'Renta anual hogar', q4:'Situación familiar',
+    q5:'Lifestyle: cuesta cambiar de marca', q6:'Lifestyle: siempre mismo supermercado',
+    q7:'Lifestyle: prefiere planes tranquilos', q8:'Lifestyle: busca marcas para percepción',
+    q9:'Lifestyle: elige restaurante por reputación', q10:'Lifestyle: invierte en cultura/viajes',
+    q11:'Lifestyle: sin estilo definido', q12:'Lifestyle: prueba restaurantes nuevos',
+    q13:'Lifestyle: se adapta fácilmente', q14:'Lifestyle: valora origen/impacto',
+    q15:'Lifestyle: prefiere actividades con aporte', q16:'Lifestyle: prefiere experiencia a anillo',
+    q17:'Última compra ropa deportiva', q18:'Última compra homewear/loungewear',
+    q19:'Frecuencia compra ropa', q20:'Última compra moda',
+    q21:'Gasto ropa deportiva por compra', q22:'Gasto homewear por compra',
+    q23:'Marca más cara último año', q24:'Gasto mensual en ropa',
+    q25_d1:'Dicotomía: Gimnasio vs Deporte aire libre',
+    q25_d2:'Dicotomía: Colores neutros vs Vividos',
+    q25_d3:'Dicotomía: Ajustado vs Suelto',
+    q25_d4:'Dicotomía: Con diseño vs Básico',
+    q25_d5:'Dicotomía: Teletrabajo vs Oficina',
+    q26:'Veces deporte a la semana', q27:'Deporte que realiza',
+    q28:'Frecuencia y lugar compra ropa deportiva',
+    q29:'Compra ropa deportiva cada temporada', q30:'Prendas deportivas en armario',
+    q31:'Duración buscada si no compra por temporada',
+    q32:'Ropa exclusiva para casa', q33:'Tipo prendas para casa',
+    q34:'Molesta cambiarse para recados',
+    q35:'Motivos compra ropa (últimos 12m)', q36:'Momentos compra ropa',
+    q37:'Talla pantalón', q38:'Talla camiseta', q39:'Talla sujetador',
+    q40:'Dificultad para encontrar talla', q41:'Motivo dificultad talla',
+    q42:'Factores más valorados en compra', q43:'Factores que frenan la compra',
+    q44:'Canal físico ropa deportiva', q45:'Canal físico homewear',
+    q46:'Compra deporte/homewear online',
+    q47:'Canal online ropa deportiva', q48:'Canal online homewear',
+    q49:'Experiencia compra deportiva', q50:'Experiencia compra homewear',
+    q51:'Experiencia digital deporte/homewear',
+    q52:'Top of mind deporte (1ª marca)', q53:'Otras marcas deporte recordadas',
+    q54:'Marcas donde compra deporte', q56:'Marca favorita deporte y motivo',
+    q57_1:'Func. sport: Sujeción', q57_2:'Func. sport: Transpirabilidad',
+    q57_3:'Func. sport: Compresión', q57_4:'Func. sport: Relación calidad-precio',
+    q57_5:'Func. sport: Secado rápido', q57_6:'Func. sport: Variedad tallas',
+    q57_7:'Func. sport: Libertad de movimiento', q57_8:'Func. sport: Suavidad tejido',
+    q57_9:'Func. sport: Comodidad', q57_10:'Func. sport: Resistencia/durabilidad',
+    q57_11:'Func. sport: Bolsillos/elementos prácticos', q57_12:'Func. sport: Versatilidad',
+    q58_1:'Emoc. sport: Estética', q58_2:'Emoc. sport: Moderna',
+    q58_3:'Emoc. sport: Refleja personalidad', q58_4:'Emoc. sport: Destaca',
+    q58_5:'Emoc. sport: Identificación marca', q58_6:'Emoc. sport: Diseño',
+    q58_7:'Emoc. sport: Marca especialista',
+    q59:'Visibilidad deporte (ranking canales)',
+    q60:'Influencer deporte (sí/no)', q60_quien:'Influencer deporte (nombre)',
+    q61:'Opinión Pilar Rubio',
+    q62:'Top of mind homewear (1ª marca)', q63:'Otras marcas homewear recordadas',
+    q64:'Marcas donde compra homewear', q66:'Marca favorita homewear y motivo',
+    q67:'Atributos valorados en homewear',
+    q68:'Visibilidad homewear (ranking canales)',
+    q69:'Influencer homewear (sí/no)', q69_quien:'Influencer homewear (nombre)',
+    q70:'Colores favoritos deporte', q71:'Combinaciones colores deporte',
+    q72_select:'Producto deporte elegido', q73:'Por qué le gusta más (deporte)',
+    q74:'Por qué los otros gustan menos (deporte)',
+    q75:'Colores favoritos homewear', q76:'Combinaciones colores homewear',
+    q77_select:'Producto homewear elegido', q78:'Por qué le gusta más (homewear)',
+    q79:'Por qué los otros gustan menos (homewear)',
+    producto_mostrado:'Tríada de producto mostrada',
+  },
+};
+
+const COLUMN_ORDER = {
+  'lingerie-swim': [
+    'q1','q2','q3','q4',
+    'q6','q7','q8','q9','q10','q11','q12','q13','q14','q15','q16','q17',
+    'q18','q19','q20','q21','q22','q23','q24','q25',
+    'q26_d1','q26_d2','q26_d3','q26_d4','q26_d5',
+    'q27','q28','q29','q30','q31','q32',
+    'q33','q34','q35','q36','q37',
+    'q38','q39',
+    'q40','q41','q42','q43','q44','q45','q46','q47','q48',
+    'q49','q50','q51','q53',
+    'q54_1','q54_2','q54_3','q54_4','q54_5','q54_6',
+    'q55_1','q55_2','q55_3','q55_4','q55_5','q55_6','q55_7',
+    'q56','q57','q57_quien','q58',
+    'q59','q60','q61','q63','q64','q65','q66','q66_quien',
+    'q67','q68','q69_select','q70','q71',
+    'q72','q73','q74_select','q75','q76',
+    'producto_mostrado',
+  ],
+  'sport-loungewear': [
+    'q1','q2','q3','q4',
+    'q5','q6','q7','q8','q9','q10','q11','q12','q13','q14','q15','q16',
+    'q17','q18','q19','q20','q21','q22','q23','q24',
+    'q25_d1','q25_d2','q25_d3','q25_d4','q25_d5',
+    'q26','q27','q28','q29','q30','q31','q32','q33','q34',
+    'q35','q36','q37','q38','q39','q40','q41',
+    'q42','q43','q44','q45','q46','q47','q48','q49','q50','q51',
+    'q52','q53','q54','q56',
+    'q57_1','q57_2','q57_3','q57_4','q57_5','q57_6',
+    'q57_7','q57_8','q57_9','q57_10','q57_11','q57_12',
+    'q58_1','q58_2','q58_3','q58_4','q58_5','q58_6','q58_7',
+    'q59','q60','q60_quien','q61',
+    'q62','q63','q64','q66','q67','q68','q69','q69_quien',
+    'q70','q71','q72_select','q73','q74',
+    'q75','q76','q77_select','q78','q79',
+    'producto_mostrado',
+  ],
+};
+
+const DICHOTOMY_PAIRS = {
+  'lingerie-swim': {
+    q26: { d1:['Playa','Montaña'], d2:['Colores neutros','Colores vividos'],
+           d3:['Con estampado','Sin estampado'], d4:['Con diseño','Básico'],
+           d5:['Producto duradero','Estar a la moda'] },
+  },
+  'sport-loungewear': {
+    q25: { d1:['Gimnasio','Deporte al aire libre'], d2:['Colores neutros','Colores vividos'],
+           d3:['Ajustado','Suelto / ligero'], d4:['Con diseño','Básico'],
+           d5:['Teletrabajo en casa','Ir a la oficina'] },
+  },
+};
+
+function getColValue(col, answers, survey_id, product_shown) {
+  // Dichotomy expanded columns (e.g. q26_d1)
+  const dMatch = col.match(/^(q\d+)_(d\d+)$/);
+  if (dMatch) {
+    const qid = dMatch[1], did = dMatch[2];
+    const pairs = ((DICHOTOMY_PAIRS[survey_id] || {})[qid] || {})[did];
+    const val = (answers[qid] || {})[did];
+    if (pairs && val) return val === 'a' ? pairs[0] : val === 'b' ? pairs[1] : val;
+    return '';
+  }
+
+  if (col === 'producto_mostrado') {
+    const ps = product_shown || {};
+    return Object.entries(ps)
+      .filter(([k]) => !k.endsWith('_triad'))
+      .map(([k]) => `${k}:tríada${ps[k+'_triad'] || '?'}`)
+      .join(' | ');
+  }
+
+  const val = answers[col];
+  if (val === undefined || val === null) return '';
+
+  if (Array.isArray(val)) {
+    // color_pick: [{hex, name}, ...]
+    if (val.length && val[0] && typeof val[0] === 'object' && 'hex' in val[0]) {
+      return val.filter(c => c && c.hex).map(c => c.name || c.hex).join(' | ');
+    }
+    // color_combos: [{colors: [...]}, ...]
+    if (val.length && val[0] && typeof val[0] === 'object' && 'colors' in val[0]) {
+      return val.map((c, i) => `Combo${i+1}:${(c.colors||[]).join('+')}`).join(' | ');
+    }
+    return val.join(' | ');
+  }
+
+  if (typeof val === 'object') {
+    // ranking: {item: rank, ...} — sort by rank
+    const entries = Object.entries(val);
+    if (entries.length && typeof entries[0][1] === 'number') {
+      return entries.sort((a,b) => a[1]-b[1]).map(([k,v]) => `${v}.${k}`).join(' | ');
+    }
+    // product_select: {category: productId}
+    if (col.endsWith('_select')) {
+      return Object.entries(val).map(([k,v]) => `${k}:${v}`).join(' | ');
+    }
+    return JSON.stringify(val);
+  }
+
+  return String(val);
+}
+
+function downloadCSV() {
+  const rows = getExportData();
+  if (!rows.length) return;
+
+  const surveyFilter = document.getElementById('filter-survey')?.value || '';
+  const esc = v => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    return '"' + s.replace(/"/g, '""') + '"';
+  };
+
+  const metaCols    = ['id','survey_id','respondent_id','created_at','completed_at','status'];
+  const qualityCols = ['_calidad','_duracion_seg','_issues'];
+
+  // Surveys present in the export
+  const surveysInData = surveyFilter
+    ? [surveyFilter]
+    : [...new Set(rows.map(r => r.survey_id))];
+
+  // Build ordered answer columns from COLUMN_ORDER, then append any unknown keys
+  const seen = new Set();
+  const orderedAnswerCols = [];
+  surveysInData.forEach(sid => {
+    (COLUMN_ORDER[sid] || []).forEach(col => {
+      if (!seen.has(col)) { seen.add(col); orderedAnswerCols.push(col); }
+    });
+  });
+  // Append any keys not covered by the map (safety net)
+  rows.forEach(r => {
+    Object.keys(r.answers || {}).forEach(k => {
+      if (!seen.has(k)) { seen.add(k); orderedAnswerCols.push(k); }
+    });
+  });
+
+  const allCols = [...metaCols, ...qualityCols, ...orderedAnswerCols];
+  const primarySurvey = surveysInData[0] || '';
+
+  // Header: "qID | Texto de la pregunta"
+  const headerRow = allCols.map(col => {
+    if (metaCols.includes(col) || qualityCols.includes(col)) return esc(col);
+    const labels = QUESTION_LABELS[primarySurvey] || {};
+    return esc(labels[col] ? `${col} | ${labels[col]}` : col);
+  }).join(',');
+
+  const csvRows = rows.map(row => {
+    const q = row._q;
+    const answers = row.answers || {};
+    const product_shown = row.product_shown || {};
+    return allCols.map(col => {
+      if (metaCols.includes(col))   return esc(row[col]);
+      if (col === '_calidad')       return esc(q.label);
+      if (col === '_duracion_seg')  return esc(q.duration !== null ? Math.round(q.duration) : null);
+      if (col === '_issues')        return esc(q.issues.join(' | '));
+      return esc(getColValue(col, answers, row.survey_id, product_shown));
+    }).join(',');
+  });
+
+  const csv = [headerRow, ...csvRows].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'selmark_respuestas_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+function downloadJSON() {
+  const rows = getExportData().map(r => ({
+    ...r,
+    _calidad: r._q.label,
+    _duracion_seg: r._q.duration !== null ? Math.round(r._q.duration) : null,
+    _issues: r._q.issues,
+    _q: undefined,
+  }));
+  const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'selmark_respuestas_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+// ── CSS extra para badges de calidad ─────────────────────
+const style = document.createElement('style');
+style.textContent = `
+  .badge.valid   { background:#e8f5e9; color:#2d6a4f; }
+  .badge.suspect { background:#fef3c7; color:#92400e; }
+`;
+document.head.appendChild(style);
+
+document.getElementById('detail-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('detail-modal')) closeModal();
+});
+</script>
+</body>
+</html>
