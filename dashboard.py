@@ -50,13 +50,28 @@ REFRESH_SECONDS = 60
 
 # ── DATA LOADING ──────────────────────────────────────────────────────────────
 def load_from_supabase():
-    """Load responses from Supabase (production)."""
+    """Load ALL responses from Supabase using pagination (default limit is 1000 rows)."""
     from supabase import create_client
     url = st.secrets['SUPABASE_URL']
     key = st.secrets['SUPABASE_KEY']
     client = create_client(url, key)
-    resp = client.table('survey_responses').select('*').eq('status', 'complete').execute()
-    return resp.data
+    all_rows = []
+    page_size = 1000
+    offset = 0
+    while True:
+        resp = (
+            client.table('survey_responses')
+            .select('*')
+            .eq('status', 'complete')
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        batch = resp.data or []
+        all_rows.extend(batch)
+        if len(batch) < page_size:
+            break
+        offset += page_size
+    return all_rows
 
 def load_from_file():
     """Load responses from local JSON (development/testing)."""
