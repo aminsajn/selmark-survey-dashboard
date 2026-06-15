@@ -99,7 +99,7 @@ def geo_group(cp_raw):
 
 def compute_quotas(rows):
     results = [qc.assess_response(r) for r in rows]
-    valid   = [r for r, res in zip(rows, results) if res['verdict'] == 'OK']
+    valid   = [r for r, res in zip(rows, results) if res['verdict'] in ('OK', 'REVIEW')]
 
     age_counts = defaultdict(int)
     geo_counts = defaultdict(int)
@@ -175,9 +175,9 @@ st.divider()
 # ── SURVEY SPLIT ─────────────────────────────────────────────────────────────
 st.subheader('By survey')
 s1 = sum(1 for r, res in zip(rows, results)
-         if res['verdict'] == 'OK' and r.get('survey_id') == 'lingerie-swim')
+         if res['verdict'] in ('OK', 'REVIEW') and r.get('survey_id') == 'lingerie-swim')
 s2 = sum(1 for r, res in zip(rows, results)
-         if res['verdict'] == 'OK' and r.get('survey_id') == 'sport-loungewear')
+         if res['verdict'] in ('OK', 'REVIEW') and r.get('survey_id') == 'sport-loungewear')
 
 cs1, cs2 = st.columns(2)
 cs1.metric('Lingerie & Swim (S1)', s1)
