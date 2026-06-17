@@ -15,7 +15,7 @@ from sklearn.preprocessing import StandardScaler
 
 st.set_page_config(
     page_title='Selmark · Consumer Insights',
-    page_icon='📊',
+    page_icon=None,
     layout='wide',
     initial_sidebar_state='expanded',
 )
@@ -27,11 +27,11 @@ def check_password():
     st.markdown("""
     <style>
     .login-box { max-width:380px; margin:120px auto; padding:40px; background:#fff;
-                 border-radius:10px; border:1px solid #D4E4F0; box-shadow:0 4px 24px rgba(0,0,0,.08) }
+                 border-radius:10px; border:1px solid #E5E7EB; box-shadow:0 4px 24px rgba(0,0,0,.08) }
     .login-title { font-family:Montserrat,sans-serif; font-size:1.4rem; font-weight:700;
-                   color:#1B2B3B; text-align:center; margin-bottom:6px }
+                   color:#111827; text-align:center; margin-bottom:6px }
     .login-sub { font-size:.75rem; letter-spacing:.12em; text-transform:uppercase;
-                 color:#6A8BA4; text-align:center; margin-bottom:28px }
+                 color:#6B7280; text-align:center; margin-bottom:28px }
     </style>
     <div class="login-box">
       <div class="login-title">Consumer Insights</div>
@@ -54,167 +54,224 @@ if not check_password():
 # ── CSS ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Montserrat:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 
 #MainMenu, footer, header { visibility: hidden }
 [data-testid="stToolbar"] { display: none }
-.block-container { padding: 0 2rem 2rem !important; max-width: 1500px }
+.block-container { padding: 0 2.5rem 3rem !important; max-width: 1440px }
 
-/* Fondo general clarito azulado */
-.stApp { background: #F3F7FB; color: #1A2A3A }
+/* Fondo blanco limpio */
+.stApp { background: #F8F9FA; color: #111827 }
 html, body, [class*="css"] { font-family: 'Inter', sans-serif }
 
-/* Sidebar navy */
-[data-testid="stSidebar"] { background: #1B2B3B !important; border-right: none !important }
-[data-testid="stSidebar"] * { color: #CBD8E6 !important }
-[data-testid="stSidebar"] label { color: #7FAFD4 !important; font-size: .7rem !important; letter-spacing: .1em; text-transform: uppercase }
-[data-testid="stSidebar"] [data-baseweb="select"] { background: #243444 !important; border: 1px solid #3A5068 !important; border-radius: 4px !important }
-[data-testid="stSidebar"] [data-baseweb="select"] * { background: #243444 !important; color: #CBD8E6 !important }
-[data-testid="stSidebar"] hr { border-color: #2E4460 !important }
-[data-testid="stSidebar"] .stRadio label { color: #CBD8E6 !important; font-size: .82rem !important }
-[data-testid="stSidebar"] [data-baseweb="radio"] { gap: 6px }
+/* Sidebar — fondo gris claro */
+[data-testid="stSidebar"] { background: #EBEBED !important; border-right: 1px solid #D8D8DB !important }
+[data-testid="stSidebar"] * { color: #111827 !important; font-family: 'Inter', sans-serif !important }
 
-/* Header top bar */
+/* Labels de filtros */
+[data-testid="stSidebar"] label {
+    color: #6B7280 !important;
+    font-size: .65rem !important;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-weight: 600 !important;
+    margin-bottom: 4px !important;
+}
+
+/* Selectbox */
+[data-testid="stSidebar"] [data-baseweb="select"] {
+    background: #F5F5F7 !important;
+    border: 1px solid #C8C8CC !important;
+    border-radius: 6px !important;
+}
+[data-testid="stSidebar"] [data-baseweb="select"] * {
+    background: #F5F5F7 !important;
+    color: #111827 !important;
+    font-size: .84rem !important;
+}
+[data-testid="stSidebar"] [data-baseweb="select"]:focus-within {
+    border-color: #0F6FEC !important;
+}
+
+/* Radio buttons */
+[data-testid="stSidebar"] .stRadio > div { gap: 0 !important }
+[data-testid="stSidebar"] [data-baseweb="radio"] {
+    padding: 7px 10px !important;
+    border-radius: 5px !important;
+    margin-bottom: 2px !important;
+    transition: background .12s !important;
+}
+[data-testid="stSidebar"] [data-baseweb="radio"]:hover { background: #DCDCDF !important }
+[data-testid="stSidebar"] .stRadio label {
+    color: #374151 !important;
+    font-size: .85rem !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    font-weight: 400 !important;
+}
+
+/* Barra de separación */
+[data-testid="stSidebar"] hr { border-color: #D0D0D3 !important; margin: 0 !important }
+
+/* Botón de colapsar — oscuro para contrastar con el sidebar claro */
+[data-testid="stSidebarCollapsedControl"] {
+    background: #1C1C1E !important;
+    border-right: none !important;
+}
+[data-testid="stSidebarCollapsedControl"] button {
+    color: #9CA3AF !important;
+    background: transparent !important;
+}
+[data-testid="stSidebarCollapsedControl"] button:hover {
+    color: #F9FAFB !important;
+    background: #2C2C2E !important;
+}
+[data-testid="collapsedControl"] {
+    background: #1C1C1E !important;
+}
+[data-testid="collapsedControl"] button {
+    color: #9CA3AF !important;
+}
+
+/* Header */
 .top-bar {
-    background: transparent;
-    padding: 14px 32px;
+    background: #ffffff;
+    padding: 16px 36px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 0 -2rem 1.5rem -2rem;
-    border-bottom: 1px solid #D4E4F0;
+    margin: 0 -2.5rem 2rem -2.5rem;
+    border-bottom: 1px solid #E5E7EB;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
 }
-.top-bar img { height: 48px; width: auto; display: block; object-fit: contain; }
+.top-bar img { height: 44px; width: auto; display: block; object-fit: contain; }
 .top-center {
-    font-family: 'Montserrat', sans-serif;
-    font-size: .72rem;
-    letter-spacing: .18em;
+    font-size: .7rem;
+    letter-spacing: .16em;
     text-transform: uppercase;
-    color: #1B2B3B;
-    font-weight: 600;
-}
-
-/* Tabs */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 0;
-    border-bottom: 2px solid #D4E4F0;
-    background: transparent;
-}
-.stTabs [data-baseweb="tab"] {
-    font-size: .72rem;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: #6A8BA4;
-    padding: 11px 22px;
-    border: none;
-    border-bottom: 3px solid transparent;
-    background: transparent !important;
+    color: #6B7280;
     font-weight: 500;
 }
+
+/* Tabs — estilo texto limpio */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 4px;
+    border-bottom: 1px solid #E5E7EB;
+    background: transparent;
+    padding: 0 2px;
+}
+.stTabs [data-baseweb="tab"] {
+    font-size: .78rem;
+    letter-spacing: .04em;
+    color: #6B7280;
+    padding: 10px 18px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent !important;
+    font-weight: 500;
+    transition: color .15s;
+}
 .stTabs [aria-selected="true"] {
-    color: #1B2B3B !important;
-    border-bottom: 3px solid #2E86AB !important;
+    color: #111827 !important;
+    border-bottom: 2px solid #0F6FEC !important;
+    font-weight: 600 !important;
 }
-.stTabs [data-baseweb="tab-panel"] { padding-top: 1.5rem }
+.stTabs [data-baseweb="tab-panel"] { padding-top: 1.8rem }
 
-/* Sección */
+/* Secciones */
 .section-title {
-    font-family: 'Montserrat', sans-serif;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
-    color: #1B2B3B;
-    letter-spacing: .02em;
-    margin-bottom: 4px;
+    color: #111827;
+    letter-spacing: -.01em;
+    margin-bottom: 2px;
 }
-.section-rule { width: 36px; height: 3px; background: #2E86AB; border-radius: 2px; margin: 6px 0 18px 0 }
+.section-rule { width: 28px; height: 2px; background: #0F6FEC; border-radius: 2px; margin: 5px 0 16px 0 }
 
-/* Metric cards */
-.kpi-row { display: flex; gap: 14px; margin-bottom: 1.8rem; flex-wrap: wrap }
+/* KPI cards — sin borde de color, solo sombra */
+.kpi-row { display: flex; gap: 12px; margin-bottom: 2rem; flex-wrap: wrap }
 .kpi-card {
-    background: #fff;
-    border: 1px solid #D4E4F0;
-    border-top: 3px solid #2E86AB;
-    border-radius: 6px;
-    padding: 18px 22px;
+    background: #ffffff;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    padding: 20px 24px;
     flex: 1;
     min-width: 140px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    transition: box-shadow .15s;
 }
-.kpi-label { font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: #6A8BA4; margin-bottom: 7px }
-.kpi-value { font-family: 'Montserrat', sans-serif; font-size: 1.9rem; font-weight: 600; color: #1B2B3B; line-height: 1 }
-.kpi-sub { font-size: .68rem; color: #2E86AB; margin-top: 5px }
+.kpi-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08) }
+.kpi-label { font-size: .65rem; letter-spacing: .08em; text-transform: uppercase; color: #9CA3AF; margin-bottom: 8px; font-weight: 500 }
+.kpi-value { font-size: 2rem; font-weight: 700; color: #111827; line-height: 1; letter-spacing: -.02em }
+.kpi-sub { font-size: .7rem; color: #0F6FEC; margin-top: 6px; font-weight: 500 }
 
-/* Chart cards */
-.chart-card { background: #fff; border: 1px solid #D4E4F0; border-radius: 6px; padding: 18px; margin-bottom: 16px }
-.chart-label { font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: #6A8BA4; margin-bottom: 10px }
-hr { border: none; border-top: 1px solid #D4E4F0; margin: 1.6rem 0 }
+/* Etiquetas de gráfico */
+.chart-label { font-size: .65rem; letter-spacing: .06em; text-transform: uppercase; color: #9CA3AF; margin-bottom: 8px; font-weight: 500 }
+hr { border: none; border-top: 1px solid #F3F4F6; margin: 2rem 0 }
 
 /* Expander */
-[data-testid="stExpander"] { border: 1px solid #D4E4F0 !important; border-radius: 6px !important; background: #fff !important }
+[data-testid="stExpander"] { border: 1px solid #E5E7EB !important; border-radius: 8px !important; background: #ffffff !important; box-shadow: 0 1px 3px rgba(0,0,0,.04) !important }
 
 /* Cluster chips */
 .cluster-chip {
     display: inline-block;
-    background: #E8F1F8;
-    color: #1B2B3B;
-    border-radius: 3px;
+    background: #EFF6FF;
+    color: #1D4ED8;
+    border-radius: 4px;
     padding: 3px 10px;
-    font-size: .72rem;
+    font-size: .7rem;
     margin: 3px 2px;
-    border: 1px solid #C0D8EC;
+    font-weight: 500;
 }
 
-/* Producto brand badge */
-.badge-s  { background:#1B2B3B; color:#fff; padding:3px 10px; border-radius:3px; font-size:.62rem; letter-spacing:.1em; text-transform:uppercase; font-weight:600 }
-.badge-a  { background:#2E86AB; color:#fff; padding:3px 10px; border-radius:3px; font-size:.62rem; letter-spacing:.1em; text-transform:uppercase; font-weight:600 }
-.badge-b  { background:#D4E4F0; color:#1B2B3B; padding:3px 10px; border-radius:3px; font-size:.62rem; letter-spacing:.1em; text-transform:uppercase; font-weight:600 }
+/* Badges de producto */
+.badge-s  { background:#1E3A8A; color:#fff; padding:3px 10px; border-radius:4px; font-size:.62rem; letter-spacing:.06em; text-transform:uppercase; font-weight:600 }
+.badge-a  { background:#3B82F6; color:#fff; padding:3px 10px; border-radius:4px; font-size:.62rem; letter-spacing:.06em; text-transform:uppercase; font-weight:600 }
+.badge-b  { background:#BAE6FD; color:#0C4A6E; padding:3px 10px; border-radius:4px; font-size:.62rem; letter-spacing:.06em; text-transform:uppercase; font-weight:600 }
 
-/* Imágenes de producto — tamaño uniforme */
+/* Imágenes de producto */
 .prod-img-container {
     width: 140px;
     height: 186px;
     overflow: hidden;
-    border-radius: 6px 6px 0 0;
-    border: 1px solid #D4E4F0;
+    border-radius: 8px 8px 0 0;
+    border: 1px solid #E5E7EB;
     border-bottom: none;
-    background: #F8FAFC;
+    background: #F9FAFB;
     margin: 0 auto;
 }
 .prod-img-container img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center top;
-    display: block;
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: center top; display: block;
 }
 
 /* Buyer persona cards */
 .persona-card {
-    border-radius: 8px;
-    padding: 18px 20px;
+    border-radius: 10px;
+    padding: 20px 22px;
     margin-bottom: 12px;
-    border: 1px solid #D4E4F0;
+    border: 1px solid rgba(255,255,255,.12);
 }
-.persona-title { font-family:'Montserrat',sans-serif; font-size:1rem; font-weight:700; margin-bottom:4px }
-.persona-n { font-size:.7rem; opacity:.7; margin-bottom:10px }
-.persona-tag { display:inline-block; background:rgba(255,255,255,.25); border-radius:3px; padding:2px 8px; font-size:.65rem; margin:2px 2px; border:1px solid rgba(255,255,255,.4) }
+.persona-title { font-size:1rem; font-weight:700; margin-bottom:4px; letter-spacing:-.01em }
+.persona-n { font-size:.7rem; opacity:.65; margin-bottom:10px }
+.persona-tag { display:inline-block; background:rgba(255,255,255,.18); border-radius:4px; padding:2px 9px; font-size:.65rem; margin:2px 2px; font-weight:500 }
 </style>
 """, unsafe_allow_html=True)
 
 # ── PALETA ───────────────────────────────────────────────────────────────────
-P     = ['#2E86AB','#1B4F72','#5DADE2','#85C1E9','#1A5276','#2980B9','#7FB3D3','#154360']
-# Colores distintos para radar (no todos azules)
-RADAR_C = ['#E74C3C','#2E86AB','#27AE60','#F39C12','#8E44AD','#16A085','#D35400','#2C3E50']
-# Colores por buyer persona
+ACCENT = '#0F6FEC'
+P      = ['#0F6FEC','#3B82F6','#60A5FA','#93C5FD','#1D4ED8','#2563EB','#BFDBFE','#DBEAFE']
+RADAR_C = ['#EF4444','#0F6FEC','#10B981','#F59E0B','#8B5CF6','#06B6D4','#F97316','#374151']
 PERSONA_C = {
-    'La Aspiracional':          '#8E44AD',
-    'La Tradicional Fiel':      '#E74C3C',
-    'La Hogareña Práctica':     '#F39C12',
-    'La Exploradora Comprometida': '#27AE60',
+    'La Aspiracional':             '#8B5CF6',
+    'La Tradicional Fiel':         '#EF4444',
+    'La Hogareña Práctica':        '#F59E0B',
+    'La Exploradora Comprometida': '#10B981',
 }
 PAPER = '#FFFFFF'
-BG    = '#F3F7FB'
-FONT  = '#1A2A3A'
-GRID  = '#EAF2F8'
+BG    = '#F8F9FA'
+FONT  = '#111827'
+GRID  = '#F3F4F6'
 AGES  = ['18–30','31–45','46+']
 
 # CCAA centroides para mapa
@@ -306,9 +363,9 @@ def img_path(code):
     return p if os.path.exists(p) else None
 
 def prod_brand(code):
-    if code.endswith('_s'): return 'Selmark',         '#1B2B3B', 'badge-s'
-    if code.endswith('_a'): return 'Comp. aspiracional','#2E86AB', 'badge-a'
-    if code.endswith('_b'): return 'Comp. accesible',  '#6A8BA4', 'badge-b'
+    if code.endswith('_s'): return 'Selmark',          '#1E3A8A', 'badge-s'
+    if code.endswith('_a'): return 'Comp. aspiracional','#3B82F6', 'badge-a'
+    if code.endswith('_b'): return 'Comp. accesible',  '#BAE6FD', 'badge-b'
     return 'Desconocido','#999',''
 
 # ── GRÁFICOS ─────────────────────────────────────────────────────────────────
@@ -322,7 +379,7 @@ def lay(title='', h=None):
         showlegend=False,
     )
     if title:
-        d['title'] = dict(text=f'<b>{title}</b>', font=dict(size=12, color='#1B2B3B'), x=0, pad=dict(b=6))
+        d['title'] = dict(text=f'<b>{title}</b>', font=dict(size=12, color=FONT), x=0, pad=dict(b=6))
     if h: d['height'] = h
     return d
 
@@ -400,7 +457,7 @@ def heatmap_fig(data_df, title='', h=320):
     z = [[float(v) if not pd.isna(v) else 0 for v in row] for row in data_df.values]
     fig = go.Figure(go.Heatmap(
         z=z, x=list(data_df.columns), y=list(data_df.index),
-        colorscale=[[0,'#EAF2F8'],[0.5,'#7FB3D3'],[1,'#1B4F72']],
+        colorscale=[[0,'#F3F4F6'],[0.5,'#60A5FA'],[1,'#1D4ED8']],
         showscale=False,
         text=[[f'{v:.1f}' for v in row] for row in z],
         texttemplate='%{text}',
@@ -509,15 +566,15 @@ def show_text_mining(series, title=''):
         lbl   = cluster_label(cl['terms'])
         pct   = cl['count'] / total * 100
         chips = ' '.join(f'<span class="cluster-chip">{t}</span>' for t in cl['terms'])
-        pct_bar = f'<div style="height:4px;background:#EAF2F8;border-radius:2px;margin:6px 0 8px">' \
-                  f'<div style="height:4px;background:#2E86AB;border-radius:2px;width:{pct:.0f}%"></div></div>'
+        pct_bar = f'<div style="height:4px;background:#F3F4F6;border-radius:2px;margin:6px 0 8px">' \
+                  f'<div style="height:4px;background:#0F6FEC;border-radius:2px;width:{pct:.0f}%"></div></div>'
         ejemplos = ' · '.join(f'<i>"{s[:60]}"</i>' for s in cl['samples'][:2])
         st.markdown(
-            f'<div style="background:#fff;border:1px solid #D4E4F0;border-left:4px solid #2E86AB;'
+            f'<div style="background:#fff;border:1px solid #E5E7EB;border-left:4px solid #0F6FEC;'
             f'border-radius:0 6px 6px 0;padding:12px 16px;margin-bottom:10px">'
             f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
-            f'<span style="font-weight:600;font-size:.85rem;color:#1B2B3B">{lbl}</span>'
-            f'<span style="font-size:.75rem;color:#2E86AB;font-weight:600">{cl["count"]} respuestas &nbsp;({pct:.0f}%)</span>'
+            f'<span style="font-weight:600;font-size:.85rem;color:#111827">{lbl}</span>'
+            f'<span style="font-size:.75rem;color:#0F6FEC;font-weight:600">{cl["count"]} respuestas &nbsp;({pct:.0f}%)</span>'
             f'</div>'
             f'{pct_bar}'
             f'<div style="margin-bottom:6px">{chips}</div>'
@@ -602,15 +659,15 @@ def show_brand_analysis(motivo_series, brand_list, title=''):
         for r in results[:8]:
             pct = r['count'] / total * 100 if total else 0
             chips = ' '.join(f'<span class="cluster-chip">{w}</span>' for w in r['top_words'])
-            pct_bar = (f'<div style="height:4px;background:#EAF2F8;border-radius:2px;margin:5px 0 7px">'
-                       f'<div style="height:4px;background:#2E86AB;border-radius:2px;width:{min(pct*3,100):.0f}%"></div></div>')
+            pct_bar = (f'<div style="height:4px;background:#F3F4F6;border-radius:2px;margin:5px 0 7px">'
+                       f'<div style="height:4px;background:#0F6FEC;border-radius:2px;width:{min(pct*3,100):.0f}%"></div></div>')
             ejemplo = f'<i>"{r["samples"][0][:80]}"</i>' if r['samples'] else ''
             st.markdown(
-                f'<div style="background:#fff;border:1px solid #D4E4F0;border-left:4px solid #1B4F72;'
+                f'<div style="background:#fff;border:1px solid #E5E7EB;border-left:4px solid #1D4ED8;'
                 f'border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:8px">'
                 f'<div style="display:flex;justify-content:space-between;align-items:center">'
-                f'<span style="font-weight:700;font-size:.9rem;color:#1B2B3B">{r["brand"]}</span>'
-                f'<span style="font-size:.72rem;color:#2E86AB;font-weight:600">{r["count"]} menciones</span>'
+                f'<span style="font-weight:700;font-size:.9rem;color:#111827">{r["brand"]}</span>'
+                f'<span style="font-size:.72rem;color:#0F6FEC;font-weight:600">{r["count"]} menciones</span>'
                 f'</div>'
                 f'{pct_bar}'
                 f'<div style="margin-bottom:5px">{chips if chips else "<span style=\'color:#aaa;font-size:.7rem\'>sin atributos frecuentes</span>"}</div>'
@@ -800,7 +857,7 @@ def spain_map_fig(df, selected_ccaa=None):
         fig = go.Figure(go.Scattergeo(
             lat=lats, lon=lons, mode='markers',
             marker=dict(size=sizes, color=colors,
-                        colorscale=[[0,'#EBF5FB'],[0.15,'#85C1E9'],[0.5,'#2E86AB'],[1,'#1B2B3B']],
+                        colorscale=[[0,'#EBF5FB'],[0.15,'#93C5FD'],[0.5,'#0F6FEC'],[1,'#111827']],
                         showscale=True, sizemode='diameter',
                         colorbar=dict(thickness=10, len=0.5, title=dict(text='n', font=dict(size=9)))),
             hovertext=texts, hoverinfo='text', customdata=names,
@@ -808,7 +865,7 @@ def spain_map_fig(df, selected_ccaa=None):
         fig.update_geos(scope='europe', center=dict(lat=40.4, lon=-3.7),
                         projection_scale=5.5, showland=True, landcolor='#F0F4F8',
                         showcoastlines=True, coastlinecolor='#B0C8D8',
-                        showocean=True, oceancolor='#EAF2F8', showframe=False)
+                        showocean=True, oceancolor='#F3F4F6', showframe=False)
         fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', margin=dict(t=5,b=5,l=0,r=0), height=420)
         return fig
 
@@ -837,8 +894,8 @@ def spain_map_fig(df, selected_ccaa=None):
         [0.0,  '#E8EDF2'],   # sin datos → gris azulado claro
         [0.01, '#C5DCF0'],   # muy pocos
         [0.25, '#5DADE2'],   # medio
-        [0.6,  '#2E86AB'],   # alto
-        [1.0,  '#1B2B3B'],   # máximo
+        [0.6,  '#0F6FEC'],   # alto
+        [1.0,  '#111827'],   # máximo
     ]
 
     fig = go.Figure(go.Choropleth(
@@ -905,8 +962,8 @@ _min_img = _logo_b64('logo_minsait.png') or _logo_b64('logo_minsait.jpg') or _lo
 
 # Fallback SVG logos if files not found
 _sel_html = _sel_img or '''<svg width="160" height="52" viewBox="0 0 160 52" xmlns="http://www.w3.org/2000/svg">
-  <text x="4" y="36" font-family="Georgia,serif" font-size="30" font-weight="700" fill="#1B2B3B" letter-spacing="-0.5">selmark</text>
-  <text x="64" y="48" font-family="Arial,sans-serif" font-size="8" font-weight="400" fill="#6A8BA4" letter-spacing="3">LINGERIE</text>
+  <text x="4" y="36" font-family="Georgia,serif" font-size="30" font-weight="700" fill="#111827" letter-spacing="-0.5">selmark</text>
+  <text x="64" y="48" font-family="Arial,sans-serif" font-size="8" font-weight="400" fill="#6B7280" letter-spacing="3">LINGERIE</text>
 </svg>'''
 
 _min_html = _min_img or '''<svg width="160" height="52" viewBox="0 0 160 52" xmlns="http://www.w3.org/2000/svg">
@@ -924,28 +981,39 @@ st.markdown(f"""
 
 # ── SIDEBAR ────────────────────────────────────────────────────────────────────
 st.sidebar.markdown("""
-<div style="text-align:center;padding:8px 0 16px">
-  <div style="font-family:Montserrat,sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:.15em;color:#fff">SELMARK</div>
-  <div style="font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:#7FAFD4">Consumer Intelligence</div>
+<div style="padding:28px 20px 20px">
+  <div style="font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:#9CA3AF;margin-bottom:8px">Research 2025</div>
+  <div style="font-size:1.25rem;font-weight:700;color:#111827;letter-spacing:-.02em;line-height:1.2">Consumer<br>Insights</div>
+  <div style="width:24px;height:2px;background:#0F6FEC;border-radius:2px;margin-top:12px"></div>
 </div>
 """, unsafe_allow_html=True)
-st.sidebar.markdown('---')
 
-survey_sel = st.sidebar.radio('Encuesta', ['Lencería & Baño', 'Deporte & Homewear'])
-is_s1      = survey_sel == 'Lencería & Baño'
-df_all     = enrich(s1_raw if is_s1 else s2_raw)
+st.sidebar.markdown("""
+<div style="padding:0 20px 6px">
+  <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#9CA3AF;margin-bottom:10px;font-weight:600">Colección</div>
+</div>
+""", unsafe_allow_html=True)
 
-st.sidebar.markdown('<br>', unsafe_allow_html=True)
-st.sidebar.markdown('**Filtros**')
+survey_sel = st.sidebar.radio('', ['Lencería & Baño', 'Deporte & Homewear'],
+                               label_visibility='collapsed')
+is_s1  = survey_sel == 'Lencería & Baño'
+df_all = enrich(s1_raw if is_s1 else s2_raw)
+
+st.sidebar.markdown("""
+<div style="height:1px;background:#D0D0D3;margin:18px 0 20px"></div>
+<div style="padding:0 20px 8px">
+  <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#9CA3AF;margin-bottom:14px;font-weight:600">Filtros</div>
+</div>
+""", unsafe_allow_html=True)
 
 age_opts = ['Todos los grupos'] + AGES
-age_f    = st.sidebar.selectbox('Edad', age_opts)
+age_f    = st.sidebar.selectbox('Grupo de edad', age_opts)
 
 ccaa_opts = ['Todas las CCAA'] + sorted(df_all['CCAA'].dropna().unique().tolist())
 geo_f     = st.sidebar.selectbox('Comunidad autónoma', ccaa_opts)
 
 persona_opts = ['Todos los perfiles'] + list(PERSONA_NAMES.values())
-tipo_f       = st.sidebar.selectbox('Buyer persona', persona_opts)
+tipo_f       = st.sidebar.selectbox('Perfil de compradora', persona_opts)
 
 mask = pd.Series(True, index=df_all.index)
 if age_f  != 'Todos los grupos':   mask &= df_all['Grupo_edad']    == age_f
@@ -953,14 +1021,20 @@ if geo_f  != 'Todas las CCAA':     mask &= df_all['CCAA']          == geo_f
 if tipo_f != 'Todos los perfiles': mask &= df_all['Buyer_persona'] == tipo_f
 df = df_all[mask].copy()
 
-st.sidebar.markdown('---')
-st.sidebar.markdown(
-    f'<div style="text-align:center;padding:8px">'
-    f'<div style="font-family:Montserrat,sans-serif;font-size:2rem;font-weight:700;color:#fff">{len(df):,}</div>'
-    f'<div style="font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:#7FAFD4">respuestas</div>'
-    f'</div>',
-    unsafe_allow_html=True,
-)
+n_active = sum([age_f != 'Todos los grupos', geo_f != 'Todas las CCAA', tipo_f != 'Todos los perfiles'])
+filter_tag = f'<span style="background:#0F6FEC;color:#fff;font-size:.58rem;padding:1px 6px;border-radius:10px;margin-left:6px;font-weight:600">{n_active}</span>' if n_active else ''
+
+st.sidebar.markdown(f"""
+<div style="height:1px;background:#D0D0D3;margin:24px 0 0"></div>
+<div style="padding:18px 20px 12px">
+  <div style="font-size:2rem;font-weight:700;color:#111827;letter-spacing:-.03em;line-height:1">{len(df):,}</div>
+  <div style="font-size:.65rem;color:#9CA3AF;margin-top:4px">encuestadas seleccionadas</div>
+  {'<div style="margin-top:10px;font-size:.65rem;color:#0F6FEC;font-weight:500">' + str(n_active) + ' filtro' + ('s' if n_active!=1 else '') + ' activo' + ('s' if n_active!=1 else '') + '</div>' if n_active else ''}
+</div>
+<div style="padding:0 20px 32px">
+  <div style="font-size:.58rem;color:#C4C4C8;letter-spacing:.04em">Selmark · Minsait Analytics</div>
+</div>
+""", unsafe_allow_html=True)
 
 # ── KPIs ──────────────────────────────────────────────────────────────────────
 lbl      = 'Lencería & Baño' if is_s1 else 'Deporte & Homewear'
@@ -1081,7 +1155,7 @@ with tab2:
             # ── Buyer Personas ──────────────────────────────────────────
             section('Buyer Personas · Metodología Sinus')
             st.markdown(
-                '<p style="font-size:.82rem;color:#6A8BA4;max-width:800px;margin-bottom:1.4rem">'
+                '<p style="font-size:.82rem;color:#6B7280;max-width:800px;margin-bottom:1.4rem">'
                 'Las 4 buyer personas se derivan automáticamente de las 12 dimensiones de lifestyle '
                 '(metodología Sinus) mediante clustering. Representan arquetipos de consumidora, '
                 'no segmentos demográficos.</p>',
@@ -1096,7 +1170,7 @@ with tab2:
                 with col_obj:
                     n = int(bp_v.get(pname, 0))
                     pct_p = n/len(df)*100 if len(df) else 0
-                    col_hex = PERSONA_C.get(pname,'#2E86AB')
+                    col_hex = PERSONA_C.get(pname,'#0F6FEC')
                     _pd = PERSONA_DESCS.get(pname, ('', []))
                     desc, tags = _pd[0], _pd[1]
                     tag_html = ''.join(f'<span class="persona-tag">{t}</span>' for t in tags)
@@ -1315,9 +1389,9 @@ with tab3:
             )
             # Línea de referencia: media general
             pct_media = df_all_t['Dificultad_encontrar_talla'].isin(hard_vals).mean()*100
-            fig.add_hline(y=pct_media, line_dash='dot', line_color='#6A8BA4', line_width=1.5,
+            fig.add_hline(y=pct_media, line_dash='dot', line_color='#6B7280', line_width=1.5,
                           annotation_text=f'Media {pct_media:.0f}%', annotation_position='top right',
-                          annotation_font=dict(size=9, color='#6A8BA4'))
+                          annotation_font=dict(size=9, color='#6B7280'))
             return fig
 
         talla_cols_list = [('Talla_pantalon','Pantalón'), ('Talla_camiseta','Camiseta'), ('Talla_sujetador','Sujetador/top')]
@@ -1330,7 +1404,7 @@ with tab3:
                 else:
                     st.info(f'Sin datos suficientes — {tlabel}')
 
-        st.markdown('<div style="font-size:.68rem;color:#6A8BA4;margin-top:4px">'
+        st.markdown('<div style="font-size:.68rem;color:#6B7280;margin-top:4px">'
                     '🔴 >25% · 🟠 15–25% · 🟡 8–15% · 🟢 <8% de dificultad · Solo tallas con n≥10 respuestas · '
                     'Línea punteada = media de la muestra</div>', unsafe_allow_html=True)
 
@@ -1425,7 +1499,7 @@ with tab3:
             with c1:
                 st.markdown('<div class="chart-label">Lo más valorado</div>', unsafe_allow_html=True)
                 for _, row in top3.iterrows():
-                    badge_color = '#2E86AB' if row['Tipo']=='Funcional' else '#E74C3C'
+                    badge_color = '#0F6FEC' if row['Tipo']=='Funcional' else '#E74C3C'
                     pct = (row['Media']-1)/4*100
                     st.markdown(
                         f'<div style="margin-bottom:14px">'
@@ -1434,7 +1508,7 @@ with tab3:
                         f'<span style="font-size:.7rem;background:{badge_color};color:#fff;padding:2px 8px;border-radius:3px">{row["Tipo"]}</span>'
                         f'</div>'
                         f'<div style="display:flex;align-items:center;gap:10px">'
-                        f'<div style="flex:1;background:#EAF2F8;border-radius:4px;height:10px">'
+                        f'<div style="flex:1;background:#F3F4F6;border-radius:4px;height:10px">'
                         f'<div style="width:{pct:.0f}%;background:{badge_color};border-radius:4px;height:10px"></div></div>'
                         f'<span style="font-size:.85rem;font-weight:700;color:{badge_color};min-width:28px">{row["Media"]:.2f}</span>'
                         f'</div></div>',
@@ -1443,7 +1517,7 @@ with tab3:
             with c2:
                 st.markdown('<div class="chart-label">Lo menos valorado</div>', unsafe_allow_html=True)
                 for _, row in bot3.iterrows():
-                    badge_color = '#2E86AB' if row['Tipo']=='Funcional' else '#E74C3C'
+                    badge_color = '#0F6FEC' if row['Tipo']=='Funcional' else '#E74C3C'
                     pct = (row['Media']-1)/4*100
                     st.markdown(
                         f'<div style="margin-bottom:14px">'
@@ -1452,9 +1526,9 @@ with tab3:
                         f'<span style="font-size:.7rem;background:{badge_color};color:#fff;padding:2px 8px;border-radius:3px">{row["Tipo"]}</span>'
                         f'</div>'
                         f'<div style="display:flex;align-items:center;gap:10px">'
-                        f'<div style="flex:1;background:#EAF2F8;border-radius:4px;height:10px">'
+                        f'<div style="flex:1;background:#F3F4F6;border-radius:4px;height:10px">'
                         f'<div style="width:{pct:.0f}%;background:#B0C8D8;border-radius:4px;height:10px"></div></div>'
-                        f'<span style="font-size:.85rem;font-weight:700;color:#6A8BA4;min-width:28px">{row["Media"]:.2f}</span>'
+                        f'<span style="font-size:.85rem;font-weight:700;color:#6B7280;min-width:28px">{row["Media"]:.2f}</span>'
                         f'</div></div>',
                         unsafe_allow_html=True)
 
@@ -1465,7 +1539,7 @@ with tab3:
                 y=list(ranking['Atributo']),
                 orientation='h',
                 marker=dict(
-                    color=['#2E86AB' if t=='Funcional' else '#E74C3C' for t in ranking['Tipo']],
+                    color=['#0F6FEC' if t=='Funcional' else '#E74C3C' for t in ranking['Tipo']],
                     line=dict(width=0)
                 ),
                 text=[f'{v:.2f}' for v in ranking['Media']],
@@ -1606,7 +1680,7 @@ with tab5:
         for pc, wc_pos, wc_neg, lbl, img_prefixes in prod_pairs:
             if pc not in df.columns: continue
 
-            st.markdown(f'<div style="font-family:Montserrat,sans-serif;font-size:1.15rem;font-weight:600;color:#1B2B3B;margin:1.2rem 0 .4rem">— {lbl}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-family:Montserrat,sans-serif;font-size:1.15rem;font-weight:600;color:#111827;margin:1.2rem 0 .4rem">— {lbl}</div>', unsafe_allow_html=True)
 
             raw_cts = Counter()
             for val in df[pc].dropna():
@@ -1623,9 +1697,9 @@ with tab5:
 
             # ─ Tarjetas resumen por tipo de marca ─────────────────────────
             brand_order = [
-                ('_s','Selmark',          '#1B2B3B','#FFFFFF'),
-                ('_a','Comp. aspiracional','#2E86AB','#FFFFFF'),
-                ('_b','Comp. accesible',  '#EAF2F8','#1B2B3B'),
+                ('_s','Selmark',          '#1E3A8A','#FFFFFF'),
+                ('_a','Comp. aspiracional','#3B82F6','#FFFFFF'),
+                ('_b','Comp. accesible',  '#BAE6FD','#0C4A6E'),
             ]
             cols3 = st.columns(3)
             for col_obj,(suf,bname,bg,fg) in zip(cols3, brand_order):
@@ -1647,7 +1721,7 @@ with tab5:
                 if m: triads.add(int(m.group(1)))
 
             for t_num in sorted(triads):
-                st.markdown(f'<div style="font-size:.7rem;font-weight:600;color:#2E86AB;margin:12px 0 8px;text-transform:uppercase;letter-spacing:.1em">Tríada {t_num}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="font-size:.7rem;font-weight:600;color:#0F6FEC;margin:12px 0 8px;text-transform:uppercase;letter-spacing:.1em">Tríada {t_num}</div>', unsafe_allow_html=True)
                 img_cols = st.columns(3)
                 triad_prods = []
                 for suf in ('_s','_a','_b'):
@@ -1672,8 +1746,8 @@ with tab5:
                                 f'<img src="data:{mime};base64,{b64}" />'
                                 f'</div>',
                                 unsafe_allow_html=True)
-                        bg_c = {'_s':'#1B2B3B','_a':'#2E86AB','_b':'#EAF2F8'}[suf]
-                        fg_c = '#FFFFFF' if suf != '_b' else '#1B2B3B'
+                        bg_c = {'_s':'#1E3A8A','_a':'#3B82F6','_b':'#BAE6FD'}[suf]
+                        fg_c = '#FFFFFF' if suf != '_b' else '#0C4A6E'
                         st.markdown(
                             f'<div style="background:{bg_c};color:{fg_c};border-radius:4px;'
                             f'padding:8px 12px;text-align:center;margin-top:4px">'
@@ -1706,15 +1780,16 @@ with tab5:
                 segs = df['CCAA'].value_counts().head(5).index.tolist(); scol = 'CCAA'
 
             fig_seg = go.Figure()
-            bnames = {'_s':'Selmark','_a':'Aspiracional','_b':'Accesible'}
-            bcols  = {'_s':P[1],'_a':P[0],'_b':P[3]}
+            bnames  = {'_s':'Selmark','_a':'Aspiracional','_b':'Accesible'}
+            bcols   = {'_s':'#1E3A8A','_a':'#3B82F6','_b':'#BAE6FD'}
+            ftcols  = {'_s':'#FFFFFF','_a':'#FFFFFF','_b':'#0C4A6E'}
             for suf in ('_s','_a','_b'):
                 ys = [prod_brand_pcts(df[df[scol]==s],pc).get(suf,0) for s in segs]
                 fig_seg.add_trace(go.Bar(
                     name=bnames[suf], x=segs, y=ys,
                     marker=dict(color=bcols[suf], line=dict(width=0)),
                     text=[f'{v:.0f}%' for v in ys],
-                    textposition='inside', textfont=dict(size=10,color='#fff'),
+                    textposition='inside', textfont=dict(size=10, color=ftcols[suf]),
                 ))
             fig_seg.update_layout(**lay(f'% elección por {seg_type.lower()} — {lbl}', 310),
                 barmode='group',
@@ -1775,14 +1850,14 @@ with tab5:
                     if texts:
                         with st.expander(f'Ver respuestas — por qué gusta más ({len(texts)})'):
                             for t in texts[:80]:
-                                st.markdown(f'<p style="font-size:.8rem;color:#2A3A4A;border-left:3px solid #2E86AB;padding-left:10px;margin:4px 0">{t}</p>', unsafe_allow_html=True)
+                                st.markdown(f'<p style="font-size:.8rem;color:#2A3A4A;border-left:3px solid #0F6FEC;padding-left:10px;margin:4px 0">{t}</p>', unsafe_allow_html=True)
             with c2:
                 if wc_neg in df.columns:
                     texts = [v for v in df[wc_neg].dropna() if is_meaningful(v)]
                     if texts:
                         with st.expander(f'Ver respuestas — por qué gustan menos ({len(texts)})'):
                             for t in texts[:80]:
-                                st.markdown(f'<p style="font-size:.8rem;color:#2A3A4A;border-left:3px solid #85C1E9;padding-left:10px;margin:4px 0">{t}</p>', unsafe_allow_html=True)
+                                st.markdown(f'<p style="font-size:.8rem;color:#2A3A4A;border-left:3px solid #93C5FD;padding-left:10px;margin:4px 0">{t}</p>', unsafe_allow_html=True)
             hr()
 
     except Exception as e:
@@ -1878,7 +1953,7 @@ with tab6:
                     f'<div style="text-align:center">'
                     f'<div style="width:56px;height:56px;background:{hex_c};border-radius:8px;'
                     f'border:1px solid rgba(0,0,0,.1);margin:0 auto 4px"></div>'
-                    f'<div style="font-size:.6rem;color:#6A8BA4">{hex_c}</div>'
+                    f'<div style="font-size:.6rem;color:#6B7280">{hex_c}</div>'
                     f'<div style="font-size:.65rem;font-weight:600;color:{FONT}">{cnt}×</div>'
                     f'</div>'
                 )
@@ -1920,7 +1995,7 @@ with tab6:
                         f'<div style="text-align:center;width:120px">'
                         f'<div style="display:flex;border-radius:6px;overflow:hidden;'
                         f'border:1px solid rgba(0,0,0,.1);margin-bottom:4px">{strips}</div>'
-                        f'<div style="font-size:.62rem;color:#6A8BA4">{cnt} encuestadas</div>'
+                        f'<div style="font-size:.62rem;color:#6B7280">{cnt} encuestadas</div>'
                         f'</div>'
                     )
                 combo_html += '</div>'
@@ -1934,7 +2009,7 @@ with tab6:
                     p_colors = parse_hex_colors(sub_p[col_fav]) if len(sub_p) else []
                     top_p = _Counter(p_colors).most_common(8) if p_colors else []
                     with p_cols_ui[idx % 4]:
-                        color_h = PERSONA_C.get(persona, '#2E86AB')
+                        color_h = PERSONA_C.get(persona, '#0F6FEC')
                         st.markdown(f'<div style="font-size:.7rem;font-weight:600;color:{color_h};'
                                     f'margin-bottom:6px">{persona}</div>', unsafe_allow_html=True)
                         if top_p:
