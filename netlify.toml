@@ -1,0 +1,41 @@
+# Configuración de Netlify
+
+[functions]
+  directory = "netlify/functions"
+
+[functions."admin-data"]
+  node_bundler = "esbuild"
+
+# La anon key de Supabase en config.js es INTENCIONALMENTE pública
+# (solo permite INSERT desde encuestas, no leer datos).
+# Las claves secretas reales (service_role, admin password) están
+# en Environment Variables de Netlify, nunca en archivos.
+[build.environment]
+  SECRETS_SCAN_OMIT_PATHS = "js/config.js,admin.html,encuesta-lenceriabano.html,encuesta-deportehomewear.html"
+
+# URLs limpias (sin .html)
+[[redirects]]
+  from = "/encuesta-lenceriabano"
+  to = "/encuesta-lenceriabano.html"
+  status = 200
+
+[[redirects]]
+  from = "/encuesta-deportehomewear"
+  to = "/encuesta-deportehomewear.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to = "/admin.html"
+  status = 200
+
+# Redirects desde URLs antiguas (por compatibilidad)
+[[redirects]]
+  from = "/encuestalencer*"
+  to = "/encuesta-lenceriabano"
+  status = 301
+
+[[redirects]]
+  from = "/encuestadeporte*"
+  to = "/encuesta-deportehomewear"
+  status = 301

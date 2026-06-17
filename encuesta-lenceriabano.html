@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encuesta Lencería y Baño — Selmark</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Ensure conditional questions within a screen are hidden when condition is false */
+    .question-block.hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+
+<header id="survey-header">
+  <span class="brand">Selmark</span>
+  <span id="progress-label">0%</span>
+</header>
+
+<main id="screen-container"></main>
+
+<footer id="nav-footer">
+  <button class="btn-prev" id="btn-prev" onclick="SurveyEngine.prev()" disabled>Anterior</button>
+  <span class="error-msg" id="nav-error"></span>
+  <button class="btn-next" id="btn-next" onclick="SurveyEngine.next()">Siguiente</button>
+</footer>
+
+<div id="submitting-overlay">
+  <div class="spinner"></div>
+  <span>Guardando tus respuestas...</span>
+</div>
+
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- Survey scripts -->
+<script src="js/config.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/s1-questions.js"></script>
+<script>
+  // Handle per-screen conditional questions (questions within a screen that have their own condition)
+  const _origRender = SurveyEngine.getState;  // we hook into render via a post-render observer
+
+  // Patch: after engine renders, apply per-question conditions
+  function applyIntraScreenConditions() {
+    const state = SurveyEngine.getState();
+    const sc = (window.SCREENS || []).find(s => {
+      const vis = state.visibleScreens || [];
+      return vis[state.currentIdx] && vis[state.currentIdx].id === s.id;
+    });
+    if (!sc) return;
+    (sc.questions || []).forEach(q => {
+      if (typeof q.condition === 'function') {
+        const block = document.getElementById('qblock_' + q.id);
+        if (block) block.classList.toggle('hidden', !q.condition(state.answers));
+      }
+    });
+  }
+
+  // Override next to also evaluate intra-screen conditions on change
+  document.addEventListener('input', () => applyIntraScreenConditions());
+  document.addEventListener('click', () => setTimeout(applyIntraScreenConditions, 50));
+
+  // Also re-apply after each render via MutationObserver
+  new MutationObserver(applyIntraScreenConditions)
+    .observe(document.getElementById('screen-container'), { childList: true, subtree: false });
+
+  SurveyEngine.init();
+</script>
+</body>
+</html>

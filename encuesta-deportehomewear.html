@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encuesta Deporte y Homewear — Selmark</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .question-block.hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+
+<header id="survey-header">
+  <span class="brand">Selmark</span>
+  <span id="progress-label">0%</span>
+</header>
+
+<main id="screen-container"></main>
+
+<footer id="nav-footer">
+  <button class="btn-prev" id="btn-prev" onclick="SurveyEngine.prev()" disabled>Anterior</button>
+  <span class="error-msg" id="nav-error"></span>
+  <button class="btn-next" id="btn-next" onclick="SurveyEngine.next()">Siguiente</button>
+</footer>
+
+<div id="submitting-overlay">
+  <div class="spinner"></div>
+  <span>Guardando tus respuestas...</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/s2-questions.js"></script>
+<script>
+  function applyIntraScreenConditions() {
+    const state = SurveyEngine.getState();
+    const sc = (window.SCREENS || []).find(s => {
+      const vis = state.visibleScreens || [];
+      return vis[state.currentIdx] && vis[state.currentIdx].id === s.id;
+    });
+    if (!sc) return;
+    (sc.questions || []).forEach(q => {
+      if (typeof q.condition === 'function') {
+        const block = document.getElementById('qblock_' + q.id);
+        if (block) block.classList.toggle('hidden', !q.condition(state.answers));
+      }
+    });
+  }
+
+  document.addEventListener('input', () => applyIntraScreenConditions());
+  document.addEventListener('click', () => setTimeout(applyIntraScreenConditions, 50));
+
+  new MutationObserver(applyIntraScreenConditions)
+    .observe(document.getElementById('screen-container'), { childList: true, subtree: false });
+
+  SurveyEngine.init();
+</script>
+</body>
+</html>

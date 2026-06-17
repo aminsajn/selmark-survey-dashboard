@@ -1,11 +1,7 @@
-*.json
-*.csv
-*.docx
-__pycache__/
+﻿__pycache__/
 *.pyc
+*.pyo
 .env
-decode_jwt.py
-test_*.py
-review_*.py
-compare_rules.py
-gen_fallos.py
+.DS_Store
+Thumbs.db
+.streamlit/secrets.toml
