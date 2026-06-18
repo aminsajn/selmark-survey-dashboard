@@ -245,16 +245,20 @@ hr { border: none; border-top: 1px solid #F3F4F6; margin: 2rem 0 }
     object-fit: cover; object-position: center top; display: block;
 }
 
-/* Buyer persona cards */
+/* Buyer persona cards — transparente con borde de color */
 .persona-card {
-    border-radius: 10px;
-    padding: 20px 22px;
+    border-radius: 12px;
+    padding: 22px 22px 18px;
     margin-bottom: 12px;
-    border: 1px solid rgba(255,255,255,.12);
+    background: #FFFFFF !important;
+    border-width: 2px;
+    border-style: solid;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
 }
-.persona-title { font-size:1rem; font-weight:700; margin-bottom:4px; letter-spacing:-.01em }
-.persona-n { font-size:.7rem; opacity:.65; margin-bottom:10px }
-.persona-tag { display:inline-block; background:rgba(255,255,255,.18); border-radius:4px; padding:2px 9px; font-size:.65rem; margin:2px 2px; font-weight:500 }
+.persona-title { font-size:.95rem; font-weight:700; margin-bottom:4px; letter-spacing:-.01em }
+.persona-n { font-size:.68rem; color:#6B7280; margin-bottom:10px }
+.persona-desc { font-size:.74rem; color:#374151; margin-bottom:12px; line-height:1.45 }
+.persona-tag { display:inline-block; border-width:1px; border-style:solid; border-radius:4px; padding:2px 8px; font-size:.62rem; margin:2px 2px; font-weight:500; background:transparent }
 </style>
 """, unsafe_allow_html=True)
 
@@ -273,6 +277,8 @@ BG    = '#F8F9FA'
 FONT  = '#111827'
 GRID  = '#F3F4F6'
 AGES  = ['18–30','31–45','46+']
+# Colores diferenciados para los 3 grupos de edad (no tres azules)
+AGE_COLORS = {'18–30': '#0F6FEC', '31–45': '#F59E0B', '46+': '#10B981'}
 
 # CCAA centroides para mapa
 CCAA_COORDS = {
@@ -313,6 +319,17 @@ NO_MEANING = {
     'depende','no tengo','no recuerdo','no me acuerdo','no lo recuerdo',
     'pues no sé','pues nada','no lo sabe','algo','no nada','no mucho',
     'pues no','ya','ok','bien','si','sí','no especifica',
+    # ruido / respuestas sin sentido
+    'nose','nose nada','jsjsjsjsjjs','jsjsjjsjsjjs','jsjsjsjjsjsjjs','jajajaja','jaja','jeje',
+    'jejeje','jajajajaja','hhhh','hhhhh','hahaha','xd','xdd','xddd','lol','lmao',
+    'asdf','qwerty','aaa','aaaa','aaaaa','bbb','cccc','dddd','eeee','fff','gggg',
+    'hhjff','hhhh','hjhjh','jjjj','kkkk','llll','mmmm','nnnn','pppp','qqqq',
+    'sdfs','sdf','sdfsd','asdfg','qweqwe','123','1234','12345','000','111','222',
+    'blah','blablabla','bla bla','blabla','nope','nop','nan','none','null',
+    'no se que poner','no sé qué poner','no tengo opinion','no tengo nada',
+    'sin comentarios','sin nada','da igual','igual','lo mismo','igual da',
+    'no lo se','no lo sé nada','pff','pfff','buf','bufffff','meh',
+    '...','….',',,','???','!!!','no procede','np','sd','st',
 }
 STOPWORDS_ES = {
     # artículos / preposiciones / conjunciones
@@ -354,6 +371,12 @@ def is_meaningful(v):
     if t in NO_MEANING: return False
     if any(t == nm or t.startswith(nm+' ') or t.endswith(' '+nm) for nm in NO_MEANING if len(nm) > 3):
         return False
+    # detectar cadenas de caracteres repetidos (jsjsjsjs, aaaaaaa, etc.)
+    if len(t) >= 4:
+        unique_chars = set(t.replace(' ',''))
+        if len(unique_chars) <= 2 and len(t) >= 6: return False
+        # patrón bicarácter repetido (jsjs, ahahah…)
+        if re.match(r'^(.{1,2})\1{3,}$', t.replace(' ','')): return False
     return True
 
 def img_path(code):
@@ -371,13 +394,14 @@ def prod_brand(code):
 # ── GRÁFICOS ─────────────────────────────────────────────────────────────────
 PC = {'modeBarButtonsToRemove': ['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d','hoverClosestCartesian','hoverCompareCartesian','toggleSpikelines'], 'displaylogo': False, 'displayModeBar': True}
 
-def lay(title='', h=None):
+def lay(title='', h=None, showlegend=False, legend=None):
     d = dict(
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
         font=dict(family='Inter, sans-serif', color=FONT, size=11),
         margin=dict(t=46 if title else 22, b=22, l=8, r=36),
-        showlegend=False,
+        showlegend=showlegend,
     )
+    if legend: d['legend'] = legend
     if title:
         d['title'] = dict(text=f'<b>{title}</b>', font=dict(size=12, color=FONT), x=0, pad=dict(b=6))
     if h: d['height'] = h
@@ -1036,45 +1060,9 @@ st.sidebar.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ── KPIs ──────────────────────────────────────────────────────────────────────
-lbl      = 'Lencería & Baño' if is_s1 else 'Deporte & Homewear'
-e_m      = df['Edad'].mean()
-top_ccaa = df['CCAA'].value_counts().index[0] if len(df) else '—'
-pct_top  = df['CCAA'].value_counts().iloc[0]/len(df)*100 if len(df) else 0
-d_m      = df['Duracion_min'].mean()
-comp_pct = (df['Grupo_edad']=='31–45').sum()/len(df)*100 if len(df) else 0
+lbl = 'Lencería & Baño' if is_s1 else 'Deporte & Homewear'
 
-st.markdown(f"""
-<div class="kpi-row">
-  <div class="kpi-card">
-    <div class="kpi-label">Muestra</div>
-    <div class="kpi-value">{len(df):,}</div>
-    <div class="kpi-sub">{survey_sel}</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Edad media</div>
-    <div class="kpi-value">{e_m:.1f}</div>
-    <div class="kpi-sub">años</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">CCAA principal</div>
-    <div class="kpi-value" style="font-size:1.3rem">{top_ccaa}</div>
-    <div class="kpi-sub">{pct_top:.0f}% de la muestra</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Duración media</div>
-    <div class="kpi-value">{d_m:.1f}'</div>
-    <div class="kpi-sub">minutos</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Segmento principal</div>
-    <div class="kpi-value">{comp_pct:.0f}%</div>
-    <div class="kpi-sub">31–45 años</div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-tab1,tab2,tab3,tab4,tab5,tab6 = st.tabs(['  Perfil  ','  Lifestyle  ','  Compra  ','  Marcas  ','  Producto  ','  Color  '])
+tab1,tab2,tab3,tab4,tab5,tab6,tab7 = st.tabs(['  Perfil  ','  Lifestyle  ','  Compra  ','  Marcas  ','  Producto  ','  Color  ','  Canales & Influencers  '])
 
 # ═══════════════════════════════════════════════════════════════════
 # TAB 1 — PERFIL
@@ -1173,12 +1161,14 @@ with tab2:
                     col_hex = PERSONA_C.get(pname,'#0F6FEC')
                     _pd = PERSONA_DESCS.get(pname, ('', []))
                     desc, tags = _pd[0], _pd[1]
-                    tag_html = ''.join(f'<span class="persona-tag">{t}</span>' for t in tags)
+                    tag_html = ''.join(
+                        f'<span class="persona-tag" style="color:{col_hex};border-color:{col_hex}20">{t}</span>'
+                        for t in tags)
                     st.markdown(
-                        f'<div class="persona-card" style="background:{col_hex};color:#fff">'
-                        f'<div class="persona-title">{pname}</div>'
+                        f'<div class="persona-card" style="border-color:{col_hex}">'
+                        f'<div class="persona-title" style="color:{col_hex}">{pname}</div>'
                         f'<div class="persona-n">{n} encuestadas · {pct_p:.0f}%</div>'
-                        f'<div style="font-size:.75rem;opacity:.85;margin-bottom:10px;line-height:1.4">{desc}</div>'
+                        f'<div class="persona-desc">{desc}</div>'
                         f'<div>{tag_html}</div>'
                         f'</div>',
                         unsafe_allow_html=True)
@@ -1218,6 +1208,73 @@ with tab2:
                 if vd_ccaa:
                     st.plotly_chart(radar_fig(ls_lbls, vd_ccaa, 'Por CCAA (top 4)', h=400),
                                     use_container_width=True, config=PC)
+
+            # ── Perfil socioeconómico por buyer persona ──────────────────
+            hr()
+            section('Perfil socioeconómico × buyer persona')
+            renta_short_p = {
+                'Menos de 20.000 €':'<20K€','20.000 – 35.000 € (medio-bajo)':'20–35K€',
+                '35.000 – 55.000 € (medio)':'35–55K€','55.000 – 75.000 € (medio-alto)':'55–75K€',
+                'Más de 75.000 € (alto)':'>75K€',
+            }
+            renta_ord_p = ['<20K€','20–35K€','35–55K€','55–75K€','>75K€']
+            df['_renta_bp'] = df['Renta_anual_hogar'].map(renta_short_p)
+
+            c1, c2 = st.columns(2, gap='large')
+            with c1:
+                # Distribución de renta por persona — % apilado
+                cross_rp = pd.crosstab(df['Buyer_persona'], df['_renta_bp'])
+                cross_rp = cross_rp.reindex(
+                    index=[p for p in p_order if p in cross_rp.index],
+                    columns=[r for r in renta_ord_p if r in cross_rp.columns]).fillna(0)
+                pct_rp = (cross_rp.div(cross_rp.sum(axis=1).replace(0,1), axis=0)*100).round(1)
+                if not pct_rp.empty:
+                    renta_colors_p = ['#DBEAFE','#93C5FD','#3B82F6','#1D4ED8','#1E3A8A']
+                    fig_rp = go.Figure()
+                    for i, renta in enumerate(pct_rp.columns):
+                        fig_rp.add_trace(go.Bar(
+                            name=renta, x=pct_rp.index.tolist(), y=pct_rp[renta].tolist(),
+                            marker=dict(color=renta_colors_p[i % len(renta_colors_p)], line=dict(width=0)),
+                        ))
+                    fig_rp.update_layout(**lay('Distribución de renta por buyer persona (%)', 320,
+                        showlegend=True, legend=dict(orientation='h', y=1.08, x=0, font=dict(size=10))),
+                        barmode='stack',
+                        xaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                        yaxis=dict(showgrid=True, gridcolor=GRID, ticksuffix='%'),
+                    )
+                    st.plotly_chart(fig_rp, use_container_width=True, config=PC)
+
+            with c2:
+                # Edad media y renta media por persona
+                edad_renta = []
+                for pname in p_order:
+                    sub_p = df[df['Buyer_persona'] == pname]
+                    edad_m = sub_p['Edad'].mean() if 'Edad' in sub_p.columns else np.nan
+                    # renta numérica aproximada
+                    renta_map_n = {'<20K€':10,'20–35K€':27,'35–55K€':45,'55–75K€':65,'>75K€':85}
+                    renta_num = sub_p['_renta_bp'].map(renta_map_n).mean()
+                    edad_renta.append({'Perfil': pname.replace('La ',''), 'Edad media': round(edad_m,1),
+                                       'Renta media (K€)': round(renta_num,1)})
+                df_er = pd.DataFrame(edad_renta)
+                if not df_er.empty:
+                    fig_er = go.Figure()
+                    for _, row in df_er.iterrows():
+                        col_p = PERSONA_C.get('La ' + row['Perfil'], P[0])
+                        fig_er.add_trace(go.Scatter(
+                            x=[row['Edad media']], y=[row['Renta media (K€)']],
+                            mode='markers+text',
+                            marker=dict(color=col_p, size=18, line=dict(width=2, color='white')),
+                            text=[row['Perfil']], textposition='top center',
+                            textfont=dict(size=9, color=FONT),
+                            name=row['Perfil'],
+                        ))
+                    fig_er.update_layout(**lay('Edad media vs. Renta media por buyer persona', 320),
+                        xaxis=dict(title='Edad media', showgrid=True, gridcolor=GRID, tickfont=dict(size=10)),
+                        yaxis=dict(title='Renta media (K€)', showgrid=True, gridcolor=GRID, tickfont=dict(size=10)),
+                    )
+                    st.plotly_chart(fig_er, use_container_width=True, config=PC)
+
+            df.drop(columns=['_renta_bp'], inplace=True, errors='ignore')
 
     except Exception as e:
         st.error(f'Error Lifestyle: {e}'); st.code(traceback.format_exc())
@@ -1294,16 +1351,49 @@ with tab3:
                                          color=P[2], title=f'Canal online — {lb}', h=300),
                                     use_container_width=True, config=PC)
 
-        # Motivos de compra — text mining
+        # Motivos y barreras — opciones cerradas → frecuencia de respuesta
         hr()
-        section('Motivos y barreras de compra — Text Mining')
+        section('Motivos y barreras de compra')
+        st.markdown('<p style="font-size:.82rem;color:#6B7280;max-width:900px;margin-bottom:1rem">'
+                    'Opciones de respuesta cerrada. Se muestra cuántas encuestadas seleccionaron cada opción '
+                    '(una encuestada puede marcar varias).</p>', unsafe_allow_html=True)
         c1, c2 = st.columns(2, gap='large')
+
+        def freq_closed_opts(series, title, color):
+            from collections import Counter as _C
+            cts = _C()
+            n_resp = 0
+            for val in series.dropna():
+                opts = [o.strip() for o in str(val).split('|') if o.strip()]
+                if opts:
+                    n_resp += 1
+                    for o in opts:
+                        cts[o] += 1
+            if not cts: return
+            items = sorted(cts.items(), key=lambda x: x[1], reverse=True)
+            labels, vals = zip(*items)
+            pcts = [v/n_resp*100 for v in vals]
+            labels_r = list(labels)[::-1]; pcts_r = list(pcts)[::-1]; vals_r = list(vals)[::-1]
+            h = max(300, len(labels_r) * 32 + 80)
+            fig = go.Figure(go.Bar(
+                y=labels_r, x=vals_r, orientation='h',
+                marker=dict(color=color, line=dict(width=0)),
+                text=[f'{p:.0f}%' for p in pcts_r],
+                textposition='outside', textfont=dict(size=10, color=FONT),
+            ))
+            fig.update_layout(**lay(title, h),
+                xaxis=dict(showgrid=False, showticklabels=False,
+                           range=[0, max(vals_r)*1.35] if vals_r else [0,10], zeroline=False),
+                yaxis=dict(showgrid=False, tickfont=dict(size=10)),
+            )
+            st.plotly_chart(fig, use_container_width=True, config=PC)
+
         with c1:
             if 'Motivos_compra_ropa' in df.columns:
-                show_text_mining(df['Motivos_compra_ropa'], 'Motivos de compra')
+                freq_closed_opts(df['Motivos_compra_ropa'], 'Motivos de compra (% de encuestadas)', P[0])
         with c2:
             if 'Factores_frenan_compra' in df.columns:
-                show_text_mining(df['Factores_frenan_compra'], 'Barreras de compra')
+                freq_closed_opts(df['Factores_frenan_compra'], 'Barreras de compra (% de encuestadas)', '#EF4444')
 
         # ── TALLAS ──────────────────────────────────────────────────
         hr()
@@ -1408,6 +1498,63 @@ with tab3:
                     '🔴 >25% · 🟠 15–25% · 🟡 8–15% · 🟢 <8% de dificultad · Solo tallas con n≥10 respuestas · '
                     'Línea punteada = media de la muestra</div>', unsafe_allow_html=True)
 
+        # ── DISTRIBUCIÓN DE TALLAS — ¿cuántas son tallas grandes? ───
+        hr()
+        section('Distribución de tallas · Peso real de tallas grandes')
+        st.markdown('<p style="font-size:.82rem;color:#6B7280;max-width:800px;margin-bottom:.8rem">'
+                    'Tamaño real de las clientas: quién tiene tallas "difíciles" de encontrar y qué peso '
+                    'representa en la base de consumidoras.</p>', unsafe_allow_html=True)
+        TALLAS_GRANDES_PANT = {'44','46','48','50','52','54','56','XL','XXL','XXXL','3XL','4XL'}
+        TALLAS_GRANDES_CAM  = {'XL','XXL','XXXL','3XL','4XL','46','48','50'}
+        TALLAS_GRANDES_SUJ  = {'E','F','G','H','90','95','100','105'}  # contornos o copas grandes
+
+        talla_grande_cols = [
+            ('Talla_pantalon',  TALLAS_GRANDES_PANT, 'Pantalón — tallas grandes (≥44/XL)'),
+            ('Talla_camiseta',  TALLAS_GRANDES_CAM,  'Camiseta — tallas grandes (≥XL)'),
+            ('Talla_sujetador', TALLAS_GRANDES_SUJ,  'Sujetador — copa/contorno grande'),
+        ]
+        tg_cols_ui = st.columns(len(talla_grande_cols))
+        for col_obj, (tcol, tg_set, tlabel) in zip(tg_cols_ui, talla_grande_cols):
+            if tcol not in df.columns: continue
+            def norm_t(v):
+                v2 = str(v).strip().upper()
+                # extraer número si viene como "42 (M)" etc.
+                m = re.search(r'\d{2,3}', v2)
+                num = m.group(0) if m else ''
+                return v2, num
+            _skip = {'0','NO USO','NINGUNA','NO LLEVO','NAN','NONE',''}
+            total_v = df[tcol].dropna().apply(lambda x: str(x).strip())
+            total_v = total_v[~total_v.str.upper().isin(_skip)]
+            grandes = total_v[total_v.apply(lambda x: any(
+                g.upper() in str(x).upper() for g in tg_set))]
+            n_g = len(grandes); n_t = len(total_v) or 1; pct_g = n_g/n_t*100
+            # distribución completa de tallas
+            vc_t = total_v.apply(lambda x: str(x).strip().upper()).value_counts().head(12)
+            with col_obj:
+                st.markdown(
+                    f'<div style="background:#F8F9FA;border:1px solid #E5E7EB;border-radius:8px;'
+                    f'padding:14px;margin-bottom:12px;text-align:center">'
+                    f'<div style="font-size:.65rem;color:#6B7280;text-transform:uppercase;letter-spacing:.1em">{tlabel}</div>'
+                    f'<div style="font-size:2rem;font-weight:700;color:#1E3A8A;line-height:1.1">{pct_g:.0f}%</div>'
+                    f'<div style="font-size:.7rem;color:#6B7280">{n_g} de {n_t} encuestadas</div>'
+                    f'</div>',
+                    unsafe_allow_html=True)
+                if not vc_t.empty:
+                    fig_t2 = go.Figure(go.Bar(
+                        x=list(vc_t.index), y=list(vc_t.values),
+                        marker=dict(
+                            color=['#EF4444' if any(g in str(k) for g in tg_set) else '#93C5FD'
+                                   for k in vc_t.index],
+                            line=dict(width=0)),
+                        text=list(vc_t.values), textposition='outside',
+                        textfont=dict(size=9, color=FONT),
+                    ))
+                    fig_t2.update_layout(**lay(f'Distribución {tlabel.split("—")[0].strip()}', 260),
+                        xaxis=dict(showgrid=False, tickfont=dict(size=9)),
+                        yaxis=dict(showgrid=False, showticklabels=False),
+                    )
+                    st.plotly_chart(fig_t2, use_container_width=True, config=PC)
+
         # ── ATRIBUTOS FUNCIONALES Y EMOCIONALES ─────────────────────
         hr()
         section('Atributos valorados')
@@ -1440,14 +1587,17 @@ with tab3:
 
         with attr_tabs[0]:
             func_means = df[func_avail].apply(pd.to_numeric, errors='coerce').mean()
+            # ordenar descendente
+            func_sorted = func_means.sort_values(ascending=True)
+            func_labels_sorted = [func_lab_avail[func_avail.index(c)] for c in func_sorted.index]
             fig_func = go.Figure(go.Bar(
-                x=[float(v) for v in func_means], y=func_lab_avail, orientation='h',
-                marker=dict(color=gradient_colors([float(v) for v in func_means]), line=dict(width=0)),
-                text=[f'{v:.2f}' for v in func_means], textposition='outside', textfont=dict(size=10,color=FONT),
+                x=[float(v) for v in func_sorted], y=func_labels_sorted, orientation='h',
+                marker=dict(color=gradient_colors([float(v) for v in func_sorted]), line=dict(width=0)),
+                text=[f'{v:.2f}' for v in func_sorted], textposition='outside', textfont=dict(size=10,color=FONT),
             ))
             fig_func.update_layout(**lay('Atributos funcionales — valoración media (1–5)', 380),
                 xaxis=dict(range=[0,5.5],showgrid=False,showticklabels=False,zeroline=False),
-                yaxis=dict(showgrid=False,tickfont=dict(size=11),autorange='reversed'),
+                yaxis=dict(showgrid=False,tickfont=dict(size=11)),
             )
             st.plotly_chart(fig_func, use_container_width=True, config=PC)
 
@@ -1460,14 +1610,16 @@ with tab3:
 
         with attr_tabs[2]:
             emoc_means = df[emoc_avail].apply(pd.to_numeric, errors='coerce').mean()
+            emoc_sorted = emoc_means.sort_values(ascending=True)
+            emoc_labels_sorted = [emoc_lab_avail[emoc_avail.index(c)] for c in emoc_sorted.index]
             fig_emoc = go.Figure(go.Bar(
-                x=[float(v) for v in emoc_means], y=emoc_lab_avail, orientation='h',
-                marker=dict(color=gradient_colors([float(v) for v in emoc_means]), line=dict(width=0)),
-                text=[f'{v:.2f}' for v in emoc_means], textposition='outside', textfont=dict(size=10,color=FONT),
+                x=[float(v) for v in emoc_sorted], y=emoc_labels_sorted, orientation='h',
+                marker=dict(color=gradient_colors([float(v) for v in emoc_sorted]), line=dict(width=0)),
+                text=[f'{v:.2f}' for v in emoc_sorted], textposition='outside', textfont=dict(size=10,color=FONT),
             ))
             fig_emoc.update_layout(**lay('Atributos emocionales — valoración media (1–5)', 340),
                 xaxis=dict(range=[0,5.5],showgrid=False,showticklabels=False,zeroline=False),
-                yaxis=dict(showgrid=False,tickfont=dict(size=11),autorange='reversed'),
+                yaxis=dict(showgrid=False,tickfont=dict(size=11)),
             )
             st.plotly_chart(fig_emoc, use_container_width=True, config=PC)
 
@@ -1532,28 +1684,319 @@ with tab3:
                         f'</div></div>',
                         unsafe_allow_html=True)
 
-            # Ranking completo
+            # Ranking completo — dos trazas para que la leyenda funcione
             st.markdown('<br>', unsafe_allow_html=True)
-            fig_rank = go.Figure(go.Bar(
-                x=[float(v) for v in ranking['Media']],
-                y=list(ranking['Atributo']),
+            rank_func = ranking[ranking['Tipo']=='Funcional']
+            rank_emoc = ranking[ranking['Tipo']=='Emocional']
+            fig_rank = go.Figure()
+            fig_rank.add_trace(go.Bar(
+                name='Funcional',
+                x=[float(v) for v in rank_func['Media']], y=list(rank_func['Atributo']),
                 orientation='h',
-                marker=dict(
-                    color=['#0F6FEC' if t=='Funcional' else '#E74C3C' for t in ranking['Tipo']],
-                    line=dict(width=0)
-                ),
-                text=[f'{v:.2f}' for v in ranking['Media']],
+                marker=dict(color='#0F6FEC', line=dict(width=0)),
+                text=[f'{v:.2f}' for v in rank_func['Media']],
                 textposition='outside', textfont=dict(size=10, color=FONT),
             ))
-            fig_rank.update_layout(**lay('Todos los atributos — ranking completo', 420),
+            fig_rank.add_trace(go.Bar(
+                name='Emocional',
+                x=[float(v) for v in rank_emoc['Media']], y=list(rank_emoc['Atributo']),
+                orientation='h',
+                marker=dict(color='#E74C3C', line=dict(width=0)),
+                text=[f'{v:.2f}' for v in rank_emoc['Media']],
+                textposition='outside', textfont=dict(size=10, color=FONT),
+            ))
+            fig_rank.update_layout(**lay('Todos los atributos — ranking completo', 420,
+                showlegend=True, legend=dict(orientation='h', y=1.06, x=0, font=dict(size=10))),
                 xaxis=dict(range=[0,5.5], showgrid=False, showticklabels=False, zeroline=False),
                 yaxis=dict(showgrid=False, tickfont=dict(size=10), autorange='reversed'),
+                barmode='overlay',
             )
-            fig_rank.update_layout(showlegend=True,
-                legend=dict(orientation='h', y=1.06, x=0,
-                            font=dict(size=10),
-                            itemsizing='constant'))
             st.plotly_chart(fig_rank, use_container_width=True, config=PC)
+
+        # ── ANÁLISIS ACTIVIDAD DEPORTIVA (solo S2) ──────────────────
+        if not is_s1:
+            hr()
+            section('Actividad deportiva · Quién, qué y cuánto')
+
+            def norm_num(v):
+                try:
+                    s = str(v).split('-')[0].split('a')[0].strip()
+                    s = re.sub(r'[^\d.]','',s)
+                    return float(s) if s else np.nan
+                except: return np.nan
+
+            # Frecuencia semanal
+            c1, c2 = st.columns(2, gap='large')
+            with c1:
+                veces_num = df['Veces_deporte_semana'].map(norm_num).dropna()
+                if len(veces_num) > 10:
+                    buckets_v = pd.cut(veces_num,
+                                       bins=[-0.1,0,1,2,3,5,100],
+                                       labels=['0 (no practica)','1 vez','2 veces','3 veces','4–5 veces','6+ veces'])
+                    vc_v = buckets_v.value_counts().reindex(
+                        ['0 (no practica)','1 vez','2 veces','3 veces','4–5 veces','6+ veces']).dropna()
+                    st.plotly_chart(hbar(list(vc_v.index), list(vc_v.values),
+                                         gradient=True, title='Frecuencia semanal de deporte', h=280),
+                                    use_container_width=True, config=PC)
+
+            with c2:
+                # Tipo de deporte — normalización básica
+                DEPORTE_NORM = {
+                    'pilates':'Pilates','pilate':'Pilates','pilatis':'Pilates',
+                    'yoga':'Yoga',
+                    'running':'Running','correr':'Running','carrera':'Running','run':'Running',
+                    'natacion':'Natación','natación':'Natación','nadar':'Natación',
+                    'gimnasio':'Gimnasio','gym':'Gimnasio','musculacion':'Gimnasio',
+                    'senderismo':'Senderismo','trekking':'Senderismo','hiking':'Senderismo',
+                    'ciclismo':'Ciclismo','bici':'Ciclismo','bicicleta':'Ciclismo','spinning':'Ciclismo',
+                    'padel':'Pádel','pádel':'Pádel','paddle':'Pádel',
+                    'tenis':'Tenis',
+                    'crossfit':'CrossFit','cross fit':'CrossFit',
+                    'baile':'Baile/Danza','zumba':'Baile/Danza','danza':'Baile/Danza',
+                    'futbol':'Fútbol','fútbol':'Fútbol','football':'Fútbol',
+                    'calistenia':'Calistenia',
+                    'ninguno':'— ninguno —','ninguna':'— ninguno —','no hago':'— ninguno —','no practico':'— ninguno —',
+                }
+                dep_cts = Counter()
+                for val in df['Deporte_que_realiza'].dropna():
+                    parts = re.split(r'[,;y/]', str(val).lower())
+                    for part in parts:
+                        part = part.strip()
+                        matched = False
+                        for key, label in DEPORTE_NORM.items():
+                            if key in part:
+                                dep_cts[label] += 1; matched = True; break
+                        if not matched and len(part) > 3 and is_meaningful(part):
+                            dep_cts[part.title()] += 1
+
+                dep_cts.pop('— ninguno —', None)
+                if dep_cts:
+                    top_dep = pd.DataFrame(dep_cts.most_common(12), columns=['Deporte','N'])
+                    st.plotly_chart(hbar(list(top_dep['Deporte']), list(top_dep['N']),
+                                         gradient=True, title='Tipos de deporte practicado', h=380),
+                                    use_container_width=True, config=PC)
+
+            # Deporte × edad: ¿quién practica qué?
+            hr()
+            st.markdown('<div class="chart-label">Deporte más practicado por grupo de edad</div>',
+                        unsafe_allow_html=True)
+
+            dep_records = []
+            for _, row in df.iterrows():
+                ge = row.get('Grupo_edad')
+                dep_str = str(row.get('Deporte_que_realiza',''))
+                if not ge or not dep_str: continue
+                parts = re.split(r'[,;y/]', dep_str.lower())
+                for part in parts:
+                    part = part.strip()
+                    for key, label in DEPORTE_NORM.items():
+                        if key in part and label != '— ninguno —':
+                            dep_records.append({'GE': ge, 'Deporte': label}); break
+
+            if dep_records:
+                dep_df = pd.DataFrame(dep_records)
+                top6_dep = dep_df['Deporte'].value_counts().head(7).index.tolist()
+                dep_age_cts = {}
+                for age in AGES:
+                    sub_a = dep_df[dep_df['GE'] == age]
+                    n_age = (df['Grupo_edad'] == age).sum() or 1
+                    dep_age_cts[age] = {d: sub_a[sub_a['Deporte']==d].shape[0]/n_age*100
+                                        for d in top6_dep}
+
+                # Barras agrupadas verticales: X=deporte, grupo=edad
+                fig_dep_cross = go.Figure()
+                age_colors = AGE_COLORS
+                for age in AGES:
+                    fig_dep_cross.add_trace(go.Bar(
+                        name=age,
+                        x=top6_dep,
+                        y=[round(dep_age_cts[age].get(d, 0), 1) for d in top6_dep],
+                        marker=dict(color=age_colors.get(age, P[2]), line=dict(width=0)),
+                        text=[f'{dep_age_cts[age].get(d,0):.0f}%' for d in top6_dep],
+                        textposition='outside', textfont=dict(size=9),
+                    ))
+                fig_dep_cross.update_layout(**lay('% de practicantes por deporte y grupo de edad', 360,
+                    showlegend=True, legend=dict(orientation='h', y=1.06, x=0, font=dict(size=10))),
+                    barmode='group',
+                    xaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                    yaxis=dict(showgrid=True, gridcolor=GRID, ticksuffix='%',
+                               range=[0, max(v for ac in dep_age_cts.values() for v in ac.values())*1.3 or 10]),
+                )
+                st.plotly_chart(fig_dep_cross, use_container_width=True, config=PC)
+
+            # Frecuencia de compra deportiva libre
+            hr()
+            section('Dónde y cada cuánto compran ropa deportiva')
+            c1, c2 = st.columns(2, gap='large')
+            with c1:
+                if 'Frecuencia_lugar_compra_deportiva' in df.columns:
+                    # extraer lugar
+                    LUGAR_NORM = {
+                        'decathlon':'Decathlon','dekathlon':'Decathlon',
+                        'amazon':'Amazon','zara':'Zara','corte ingles':'El Corte Inglés',
+                        'corte inglés':'El Corte Inglés','el corte':'El Corte Inglés',
+                        'nike':'Nike (tienda)','adidas':'Adidas (tienda)',
+                        'online':'Online (sin especificar)','internet':'Online (sin especificar)',
+                        'tienda':'Tienda física','multimarca':'Multimarca',
+                        'outlet':'Outlet',
+                    }
+                    lugar_cts = Counter()
+                    otros_raw = []
+                    for val in df['Frecuencia_lugar_compra_deportiva'].dropna():
+                        s = str(val).lower()
+                        matched = False
+                        for key, label in LUGAR_NORM.items():
+                            if key in s: lugar_cts[label] += 1; matched = True; break
+                        if not matched and is_meaningful(s) and len(s) > 3:
+                            try: clean = val.encode('latin1').decode('utf-8')
+                            except: clean = val
+                            otros_raw.append(str(clean).strip())
+                    # contar "otros" normalizados como entidades propias
+                    otros_norm = Counter()
+                    for raw in otros_raw:
+                        key_r = raw.lower().strip()
+                        if len(key_r) > 3: otros_norm[raw.title()] += 1
+                    top_otros = [f'{k} ({v})' for k, v in otros_norm.most_common(3)]
+                    if top_otros: lugar_cts[f'Otro: {", ".join(top_otros[:2])}…'] = len(otros_raw)
+                    if lugar_cts:
+                        top_lug = pd.DataFrame(lugar_cts.most_common(9), columns=['Lugar','N'])
+                        st.plotly_chart(hbar(list(top_lug['Lugar']), list(top_lug['N']),
+                                             gradient=True, title='Lugar habitual de compra deportiva', h=320),
+                                        use_container_width=True, config=PC)
+            with c2:
+                if 'Frecuencia_lugar_compra_deportiva' in df.columns:
+                    # extraer frecuencia temporal
+                    FREQ_NORM = {
+                        'temporada':'Cada temporada','año':'Una vez al año','anual':'Una vez al año',
+                        '6 mes':'Cada 6 meses','seis mes':'Cada 6 meses','semestre':'Cada 6 meses',
+                        '3 mes':'Cada 3 meses','tres mes':'Cada 3 meses','trimestre':'Cada 3 meses',
+                        '2 mes':'Cada 2 meses','dos mes':'Cada 2 meses',
+                        'mes':'Mensual','mensual':'Mensual',
+                        'necesita':'Cuando necesita','estropea':'Cuando se estropea','gasta':'Cuando se gasta',
+                        'rebajas':'En rebajas',
+                    }
+                    freq_cts = Counter()
+                    for val in df['Frecuencia_lugar_compra_deportiva'].dropna():
+                        s = str(val).lower()
+                        for key, label in FREQ_NORM.items():
+                            if key in s: freq_cts[label] += 1; break
+                    if freq_cts:
+                        top_frq = pd.DataFrame(freq_cts.most_common(8), columns=['Frecuencia','N'])
+                        st.plotly_chart(hbar(list(top_frq['Frecuencia']), list(top_frq['N']),
+                                             color=P[2], title='Frecuencia de compra deportiva', h=300),
+                                        use_container_width=True, config=PC)
+
+            # Prendas en armario × gasto (proxy nivel de engagement)
+            if 'Prendas_deportivas_armario' in df.columns:
+                hr()
+                section('Prendas deportivas en armario × nivel económico')
+                PRENDAS_NORM = {
+                    '1':'1–3 prendas','2':'1–3 prendas','3':'1–3 prendas',
+                    '4':'4–6 prendas','5':'4–6 prendas','6':'4–6 prendas',
+                    '7':'7–10 prendas','8':'7–10 prendas','9':'7–10 prendas','10':'7–10 prendas',
+                }
+                def bucket_prendas(v):
+                    try:
+                        n = int(float(str(v).strip()))
+                        if n <= 3: return '1–3 prendas'
+                        if n <= 6: return '4–6 prendas'
+                        if n <= 10: return '7–10 prendas'
+                        return '10+ prendas'
+                    except: return None
+
+                df['_prendas_b'] = df['Prendas_deportivas_armario'].map(bucket_prendas)
+                renta_short2 = {
+                    'Menos de 20.000 €':'<20K€','20.000 – 35.000 € (medio-bajo)':'20–35K€',
+                    '35.000 – 55.000 € (medio)':'35–55K€','55.000 – 75.000 € (medio-alto)':'55–75K€',
+                    'Más de 75.000 € (alto)':'>75K€',
+                }
+                df['_renta_s'] = df['Renta_anual_hogar'].map(renta_short2)
+                renta_ord2 = ['<20K€','20–35K€','35–55K€','55–75K€','>75K€']
+                prenda_ord = ['1–3 prendas','4–6 prendas','7–10 prendas','10+ prendas']
+                cross_p = pd.crosstab(df['_prendas_b'], df['_renta_s'])
+                cross_p = cross_p.reindex(index=[p for p in prenda_ord if p in cross_p.index],
+                                           columns=[r for r in renta_ord2 if r in cross_p.columns]).fillna(0)
+                pct_p = (cross_p.div(cross_p.sum(axis=1).replace(0,1), axis=0) * 100).round(1)
+                if not pct_p.empty:
+                    fig_p = go.Figure()
+                    renta_colors = [P[4],P[0],P[1],P[2],P[3]]
+                    for i, renta in enumerate(pct_p.columns):
+                        fig_p.add_trace(go.Bar(
+                            name=renta, x=pct_p.index.tolist(), y=pct_p[renta].tolist(),
+                            marker=dict(color=renta_colors[i % len(renta_colors)], line=dict(width=0)),
+                        ))
+                    fig_p.update_layout(**lay('Nº prendas deportivas en armario por nivel de renta (%)', 320,
+                        showlegend=True, legend=dict(orientation='h', y=1.08, x=0, font=dict(size=10))),
+                        barmode='stack',
+                        xaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                        yaxis=dict(showgrid=True, gridcolor=GRID, ticksuffix='%'),
+                    )
+                    st.plotly_chart(fig_p, use_container_width=True, config=PC)
+                df.drop(columns=['_prendas_b','_renta_s'], inplace=True, errors='ignore')
+
+        # ── MODELOS EN ARMARIO × NIVEL SOCIOECONÓMICO (S1: bañadores) ─
+        if is_s1 and 'Banadores_en_armario' in df.columns:
+            hr()
+            section('Bañadores en armario × nivel socioeconómico')
+
+            def bucket_ban(v):
+                try:
+                    n = int(float(str(v).strip()))
+                    if n <= 1: return '1'
+                    if n <= 3: return '2–3'
+                    if n <= 5: return '4–5'
+                    return '6+'
+                except: return None
+
+            df['_ban_b'] = df['Banadores_en_armario'].map(bucket_ban)
+            renta_short3 = {
+                'Menos de 20.000 €':'<20K€','20.000 – 35.000 € (medio-bajo)':'20–35K€',
+                '35.000 – 55.000 € (medio)':'35–55K€','55.000 – 75.000 € (medio-alto)':'55–75K€',
+                'Más de 75.000 € (alto)':'>75K€',
+            }
+            df['_renta_s2'] = df['Renta_anual_hogar'].map(renta_short3)
+            ban_ord = ['1','2–3','4–5','6+']
+            renta_ord3 = ['<20K€','20–35K€','35–55K€','55–75K€','>75K€']
+            cross_b = pd.crosstab(df['_ban_b'], df['_renta_s2'])
+            cross_b = cross_b.reindex(index=[b for b in ban_ord if b in cross_b.index],
+                                       columns=[r for r in renta_ord3 if r in cross_b.columns]).fillna(0)
+            pct_b = (cross_b.div(cross_b.sum(axis=0).replace(0,1), axis=1) * 100).round(1)
+
+            c1, c2 = st.columns(2, gap='large')
+            with c1:
+                if not cross_b.empty:
+                    fig_bh = go.Figure()
+                    for i, renta in enumerate(cross_b.columns):
+                        fig_bh.add_trace(go.Bar(
+                            name=renta, x=cross_b.index.tolist(), y=cross_b[renta].tolist(),
+                            marker=dict(color=[P[4],P[0],P[1],P[2],P[3]][i % 5], line=dict(width=0)),
+                        ))
+                    fig_bh.update_layout(**lay('Bañadores en armario por nivel de renta (nº)', 320,
+                        showlegend=True, legend=dict(orientation='h', y=1.08, x=0, font=dict(size=10))),
+                        barmode='group',
+                        xaxis=dict(showgrid=False, tickfont=dict(size=11)),
+                        yaxis=dict(showgrid=True, gridcolor=GRID),
+                    )
+                    st.plotly_chart(fig_bh, use_container_width=True, config=PC)
+            with c2:
+                # Bañadores usados en temporada vs en armario
+                if 'Banadores_usados_temporada' in df.columns:
+                    def bucket_uso(v):
+                        try:
+                            n = int(float(str(v).strip()))
+                            if n <= 1: return '1'
+                            if n <= 2: return '2'
+                            if n <= 3: return '3'
+                            return '4+'
+                        except: return None
+                    uso_vc = df['Banadores_usados_temporada'].map(bucket_uso).value_counts().reindex(
+                        ['1','2','3','4+']).dropna()
+                    if not uso_vc.empty:
+                        st.plotly_chart(vbar(list(uso_vc.index), list(uso_vc.values),
+                                             colors=P[:len(uso_vc)],
+                                             title='Bañadores usados por temporada', h=320),
+                                        use_container_width=True, config=PC)
+            df.drop(columns=['_ban_b','_renta_s2'], inplace=True, errors='ignore')
 
     except Exception as e:
         st.error(f'Error Compra: {e}'); st.code(traceback.format_exc())
@@ -1588,17 +2031,70 @@ with tab4:
                 s = pd.concat([df[tom] if tom in df.columns else pd.Series(dtype=str),
                                df[otras] if otras in df.columns else pd.Series(dtype=str)],
                               ignore_index=True)
-                tb = top_mentions(s, 12)
+                tb = top_mentions(s, 20)  # top 20 para encontrar Selmark aunque esté abajo
                 if not tb.empty:
-                    st.plotly_chart(hbar(list(tb['Marca']), list(tb['Menciones']),
-                                         gradient=True, title=f'Notoriedad espontánea — {lb}', h=400),
-                                    use_container_width=True, config=PC)
+                    # Posicionar Selmark: buscar en el ranking completo
+                    all_brands = top_mentions(s, 50)
+                    selmark_row = all_brands[all_brands['Marca'].str.lower() == 'selmark']
+                    if not selmark_row.empty:
+                        selmark_pos = selmark_row.index[0] + 1
+                        selmark_n   = int(selmark_row['Menciones'].iloc[0])
+                        selmark_pct = selmark_n / len(df) * 100
+                        st.markdown(
+                            f'<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;'
+                            f'padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:16px">'
+                            f'<span style="font-size:1.6rem;font-weight:700;color:#1E3A8A">#{selmark_pos}</span>'
+                            f'<div><div style="font-size:.75rem;font-weight:600;color:#1E3A8A">Posición de Selmark en mención espontánea — {lb}</div>'
+                            f'<div style="font-size:.7rem;color:#6B7280">{selmark_n} menciones · {selmark_pct:.1f}% de las encuestadas</div></div>'
+                            f'</div>',
+                            unsafe_allow_html=True)
+                    else:
+                        st.markdown(
+                            '<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;'
+                            'padding:12px 16px;margin-bottom:12px;font-size:.78rem;color:#92400E">'
+                            f'⚠️ Selmark no aparece en la mención espontánea — {lb}.</div>',
+                            unsafe_allow_html=True)
+
+                    # Colorear barra de Selmark en el gráfico top 15
+                    tb15 = tb.head(15)
+                    bar_colors = ['#EF4444' if str(m).lower() == 'selmark' else P[0]
+                                  for m in tb15['Marca']]
+                    brands_r = list(tb15['Marca'])[::-1]
+                    vals_r   = list(tb15['Menciones'])[::-1]
+                    cols_r   = bar_colors[::-1]
+                    h_brand  = max(340, len(brands_r)*30 + 80)
+                    fig_brand = go.Figure(go.Bar(
+                        y=brands_r, x=vals_r, orientation='h',
+                        marker=dict(color=cols_r, line=dict(width=0)),
+                        text=vals_r, textposition='outside',
+                        textfont=dict(size=10, color=FONT),
+                    ))
+                    fig_brand.update_layout(**lay(f'Notoriedad espontánea — {lb}', h_brand),
+                        xaxis=dict(showgrid=False, showticklabels=False,
+                                   range=[0, max(vals_r)*1.3] if vals_r else [0,10], zeroline=False),
+                        yaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                    )
+                    st.plotly_chart(fig_brand, use_container_width=True, config=PC)
+
                 if usa in df.columns:
                     tu = top_mentions(df[usa], 10)
                     if not tu.empty:
-                        st.plotly_chart(hbar(list(tu['Marca']), list(tu['Menciones']),
-                                             color=P[2], title=f'Dónde compra — {lb}', h=340),
-                                        use_container_width=True, config=PC)
+                        tu_colors = ['#EF4444' if str(m).lower() == 'selmark' else P[2]
+                                     for m in tu['Marca']]
+                        tu_r = list(tu['Marca'])[::-1]; tv_r = list(tu['Menciones'])[::-1]
+                        tc_r = tu_colors[::-1]
+                        fig_uso = go.Figure(go.Bar(
+                            y=tu_r, x=tv_r, orientation='h',
+                            marker=dict(color=tc_r, line=dict(width=0)),
+                            text=tv_r, textposition='outside',
+                            textfont=dict(size=10, color=FONT),
+                        ))
+                        fig_uso.update_layout(**lay(f'Dónde compra — {lb}', max(300, len(tu_r)*30+80)),
+                            xaxis=dict(showgrid=False, showticklabels=False,
+                                       range=[0, max(tv_r)*1.3] if tv_r else [0,10], zeroline=False),
+                            yaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                        )
+                        st.plotly_chart(fig_uso, use_container_width=True, config=PC)
 
         hr()
         section('Atributos — Funcionales y emocionales')
@@ -1654,6 +2150,111 @@ with tab4:
         for mc, blist, lb in brand_lists:
             if mc in df.columns and df[mc].dropna().apply(is_meaningful).sum() > 10:
                 show_brand_analysis(df[mc], blist, f'{lb} — por qué eligen cada marca')
+
+        # ── MARCAS MÁS RECONOCIDAS POR CCAA ─────────────────────────
+        hr()
+        section('Penetración de marca por Comunidad Autónoma')
+        st.markdown(
+            '<p style="font-size:.82rem;color:#6B7280;max-width:900px;margin-bottom:1rem">'
+            'Notoriedad espontánea (top of mind + otras menciones) por CCAA. '
+            'Útil para detectar zonas de baja penetración y oportunidades de expansión.</p>',
+            unsafe_allow_html=True)
+
+        tom_cols_ccaa = [bc[0][0], bc[0][1]] if len(bc) > 0 else []
+        if tom_cols_ccaa and 'CCAA' in df.columns:
+            all_ccaa_available = sorted(df['CCAA'].dropna().unique().tolist())
+            all_tom_cols = []
+            for tom_c, otras_c, usa_c, lb_m in bc:
+                if tom_c in df.columns: all_tom_cols.append(tom_c)
+                if otras_c in df.columns: all_tom_cols.append(otras_c)
+
+            # Calcular menciones para TODAS las CCAA (no solo top 7)
+            ccaa_brand_data_all = {}
+            for ccaa in all_ccaa_available:
+                sub = df[df['CCAA'] == ccaa]
+                cts = Counter()
+                for col in all_tom_cols:
+                    if col in sub.columns:
+                        for val in sub[col].dropna():
+                            for item in str(val).split('|'):
+                                item = item.strip().title()
+                                if item and item.lower() not in NO_MEANING and len(item) > 2:
+                                    cts[item] += 1
+                ccaa_brand_data_all[ccaa] = cts
+
+            global_cts_all = Counter()
+            for cts in ccaa_brand_data_all.values(): global_cts_all.update(cts)
+            all_marcas_ranked = [m for m, _ in global_cts_all.most_common(20)]
+
+            # Filtros interactivos
+            col_f1, col_f2 = st.columns(2, gap='large')
+            with col_f1:
+                ccaa_options = ['Todas las CCAA'] + all_ccaa_available
+                ccaa_sel = st.selectbox('Comunidad Autónoma', ccaa_options, key='ccaa_marca')
+            with col_f2:
+                marca_options = ['Todas las marcas'] + all_marcas_ranked[:15]
+                marca_sel = st.multiselect('Marcas a mostrar', all_marcas_ranked[:15],
+                                           default=all_marcas_ranked[:8], key='marca_ccaa_filter')
+
+            ccaa_list_filtered = all_ccaa_available if ccaa_sel == 'Todas las CCAA' else [ccaa_sel]
+            # solo CCAA con muestra suficiente
+            ccaa_list_filtered = [c for c in ccaa_list_filtered if len(df[df['CCAA']==c]) >= 5]
+            top_marcas_sel = marca_sel if marca_sel else all_marcas_ranked[:8]
+
+            if top_marcas_sel and ccaa_list_filtered:
+                heat_data = []
+                for marca in top_marcas_sel:
+                    row_vals = []
+                    for ccaa in ccaa_list_filtered:
+                        n_ccaa = len(df[df['CCAA'] == ccaa])
+                        cnt = ccaa_brand_data_all[ccaa].get(marca, 0)
+                        row_vals.append(round(cnt / n_ccaa * 100 if n_ccaa > 0 else 0, 1))
+                    heat_data.append(row_vals)
+
+                h_hm = max(320, len(top_marcas_sel) * 36 + 80)
+                fig_hm = go.Figure(go.Heatmap(
+                    z=heat_data,
+                    x=ccaa_list_filtered,
+                    y=top_marcas_sel,
+                    colorscale=[[0,'#F8FAFF'],[0.4,'#93C5FD'],[1,'#1E3A8A']],
+                    text=[[f'{v:.0f}%' for v in row] for row in heat_data],
+                    texttemplate='%{text}',
+                    textfont=dict(size=9),
+                    showscale=True,
+                    colorbar=dict(title='%', ticksuffix='%', thickness=10,
+                                  len=0.8, tickfont=dict(size=9)),
+                ))
+                fig_hm.update_layout(**lay('% de mención espontánea por marca y CCAA', h_hm),
+                    xaxis=dict(showgrid=False, tickfont=dict(size=9), tickangle=-25),
+                    yaxis=dict(showgrid=False, tickfont=dict(size=10), autorange='reversed'),
+                )
+                st.plotly_chart(fig_hm, use_container_width=True, config=PC)
+
+                # Tabla — marca líder por CCAA
+                hr()
+                ccaa_leader = {}
+                for ccaa in all_ccaa_available:
+                    cts_c = ccaa_brand_data_all.get(ccaa, Counter())
+                    if cts_c:
+                        leader, score = cts_c.most_common(1)[0]
+                        n_ccaa = len(df[df['CCAA']==ccaa]) or 1
+                        ccaa_leader[ccaa] = {'marca': leader, 'pct': round(score/n_ccaa*100, 1)}
+
+                if ccaa_leader:
+                    st.markdown('<div class="chart-label">Marca más mencionada por CCAA</div>',
+                                unsafe_allow_html=True)
+                    df_leader = pd.DataFrame([
+                        {'CCAA': c, 'Marca líder': v['marca'], '% mención': f"{v['pct']:.1f}%",
+                         'n encuestadas': len(df[df['CCAA']==c])}
+                        for c, v in ccaa_leader.items()
+                    ]).sort_values('CCAA')
+                    st.dataframe(df_leader, use_container_width=True, hide_index=True)
+
+                with st.expander('Ver tabla de datos completa'):
+                    df_heat = pd.DataFrame(heat_data, index=top_marcas_sel, columns=ccaa_list_filtered)
+                    df_heat.index.name = 'Marca'
+                    st.dataframe(df_heat.style.format('{:.1f}%').background_gradient(
+                        cmap='Blues', axis=None), use_container_width=True)
 
     except Exception as e:
         st.error(f'Error Marcas: {e}'); st.code(traceback.format_exc())
@@ -2024,5 +2625,426 @@ with tab6:
 
             hr()
 
+        # ── COLORES POR RANGO DE EDAD ─────────────────────────────────
+        for col_fav_age, _col_combo_age, label_age in (color_pairs if len(color_pairs) else []):
+            if col_fav_age not in df.columns or 'Grupo_edad' not in df.columns:
+                continue
+            section(f'Colores por rango de edad — {label_age}')
+            age_col_data = {}
+            for age in AGES:
+                sub_age = df[df['Grupo_edad'] == age]
+                age_col_data[age] = parse_hex_colors(sub_age[col_fav_age])
+
+            # Agrupar por tono (12 categorías de color)
+            def hex_to_hue_category(hex_c):
+                try:
+                    h = hex_c.lstrip('#')
+                    r,g,b = tuple(int(h[i:i+2],16)/255 for i in (0,2,4))
+                    import colorsys as _cs
+                    hue, sat, val = _cs.rgb_to_hsv(r, g, b)
+                    if sat < 0.12: return '⬜ Blanco/Crema' if val > 0.85 else ('⬛ Negro/Gris oscuro' if val < 0.35 else '🔲 Gris medio')
+                    h_deg = hue * 360
+                    if h_deg < 20: return '🔴 Rojo'
+                    if h_deg < 40: return '🟠 Naranja'
+                    if h_deg < 65: return '🟡 Amarillo'
+                    if h_deg < 150: return '🟢 Verde'
+                    if h_deg < 195: return '🩵 Azul claro/Turquesa'
+                    if h_deg < 255: return '🔵 Azul'
+                    if h_deg < 290: return '🟣 Morado/Violeta'
+                    if h_deg < 330: return '🩷 Rosa/Fucsia'
+                    return '🔴 Rojo'
+                except: return 'Otro'
+
+            cat_colors = ['🔴 Rojo','🟠 Naranja','🟡 Amarillo','🟢 Verde',
+                          '🩵 Azul claro/Turquesa','🔵 Azul','🟣 Morado/Violeta','🩷 Rosa/Fucsia',
+                          '⬜ Blanco/Crema','🔲 Gris medio','⬛ Negro/Gris oscuro']
+
+            # Para cada categoría de color, usar 3 tonalidades (claro→oscuro por edad)
+            # (light=18-30, medium=31-45, dark=46+)
+            CAT_SHADES = {
+                '🔴 Rojo':                   ('#FFBBBB', '#EF4444', '#B91C1C'),
+                '🟠 Naranja':                ('#FED7AA', '#F97316', '#C2410C'),
+                '🟡 Amarillo':               ('#FEF08A', '#EAB308', '#A16207'),
+                '🟢 Verde':                  ('#BBF7D0', '#22C55E', '#15803D'),
+                '🩵 Azul claro/Turquesa':    ('#CFFAFE', '#06B6D4', '#0E7490'),
+                '🔵 Azul':                   ('#BFDBFE', '#3B82F6', '#1E3A8A'),
+                '🟣 Morado/Violeta':         ('#E9D5FF', '#A855F7', '#6B21A8'),
+                '🩷 Rosa/Fucsia':            ('#FBCFE8', '#EC4899', '#9D174D'),
+                '⬜ Blanco/Crema':           ('#F9FAFB', '#D1D5DB', '#6B7280'),
+                '🔲 Gris medio':             ('#E5E7EB', '#9CA3AF', '#4B5563'),
+                '⬛ Negro/Gris oscuro':      ('#9CA3AF', '#374151', '#111827'),
+            }
+            age_shade_idx = {'18–30': 0, '31–45': 1, '46+': 2}
+            fig_age_col = go.Figure()
+            for age in AGES:
+                if not age_col_data.get(age): continue
+                cat_cts = Counter(hex_to_hue_category(h) for h in age_col_data[age])
+                total_age = sum(cat_cts.values()) or 1
+                vals = [cat_cts.get(c, 0) / total_age * 100 for c in cat_colors]
+                sidx = age_shade_idx.get(age, 0)
+                marker_colors = [CAT_SHADES.get(c, ('#aaa','#777','#444'))[sidx] for c in cat_colors]
+                # Para el grupo más claro (18-30), añadir borde visible en blancos/grises claros
+                line_colors = ['#9CA3AF' if sidx == 0 and c in ('⬜ Blanco/Crema',) else 'rgba(0,0,0,0)'
+                               for c in cat_colors]
+                fig_age_col.add_trace(go.Bar(
+                    name=age, x=cat_colors, y=vals,
+                    marker=dict(color=marker_colors,
+                                line=dict(color=line_colors, width=1)),
+                ))
+            fig_age_col.update_layout(**lay(f'Preferencia de tono de color por grupo de edad — {label_age}', 340,
+                showlegend=True, legend=dict(orientation='h', y=1.08, x=0, font=dict(size=10))),
+                barmode='group',
+                xaxis=dict(showgrid=False, tickfont=dict(size=9), tickangle=-20),
+                yaxis=dict(showgrid=True, gridcolor=GRID, ticksuffix='%'),
+            )
+            st.plotly_chart(fig_age_col, use_container_width=True, config=PC)
+
+            # Swatches top 8 por grupo de edad
+            age_sw_cols = st.columns(len(AGES))
+            for age, col_obj in zip(AGES, age_sw_cols):
+                with col_obj:
+                    top_age_cols = Counter(age_col_data.get(age, [])).most_common(8)
+                    st.markdown(f'<div style="font-size:.7rem;font-weight:600;color:#0F6FEC;margin-bottom:6px">{age}</div>',
+                                unsafe_allow_html=True)
+                    if top_age_cols:
+                        sw = '<div style="display:flex;flex-wrap:wrap;gap:4px">'
+                        for hx, cnt in top_age_cols:
+                            sw += (f'<div title="{hx} ({cnt}×)" style="width:32px;height:32px;background:{hx};'
+                                   f'border-radius:5px;border:1px solid rgba(0,0,0,.1)"></div>')
+                        sw += '</div>'
+                        st.markdown(sw, unsafe_allow_html=True)
+            hr()
+
     except Exception as e:
         st.error(f'Error Color: {e}'); st.code(traceback.format_exc())
+
+# ═══════════════════════════════════════════════════════════════════
+# TAB 7 — CANALES & INFLUENCERS
+# ═══════════════════════════════════════════════════════════════════
+with tab7:
+    try:
+        section('Canales de visibilidad · Análisis cruzado por edad')
+
+        # columnas de canales según encuesta
+        if is_s1:
+            vis_cols = [('Visibilidad_lenceria_canales','Lencería'),('Visibilidad_bano_canales','Baño')]
+            inf_sino = [('Influencer_lenceria_sino','Lencería'),('Influencer_bano_sino','Baño')]
+            inf_nom  = [('Influencer_lenceria_nombre','Lencería'),('Influencer_bano_nombre','Baño')]
+        else:
+            vis_cols = [('Visibilidad_deporte_canales','Deporte'),('Visibilidad_homewear_canales','Homewear')]
+            inf_sino = [('Influencer_deporte_sino','Deporte'),('Influencer_homewear_sino','Homewear')]
+            inf_nom  = [('Influencer_deporte_nombre','Deporte'),('Influencer_homewear_nombre','Homewear')]
+
+        def parse_canal_rank(series, top_n=1):
+            """Extrae el canal en posición top_n de respuestas ordenadas '1.Canal | 2.Canal …'."""
+            cts = Counter()
+            for val in series.dropna():
+                parts = str(val).split('|')
+                for part in parts:
+                    part = part.strip()
+                    m = re.match(r'^(\d+)\.(.*)', part)
+                    if m:
+                        rank = int(m.group(1))
+                        canal = m.group(2).strip()
+                        if rank <= top_n and canal and len(canal) > 2:
+                            cts[canal] += 1
+                    elif not re.match(r'^\d+\.', part) and len(part) > 2:
+                        # respuesta sin orden numérico — contar como 1ª posición
+                        cts[part] += 1
+                        break
+            return cts
+
+        # ── Canal 1ª posición total y por edad ─────────────────────────
+        for vis_col, label_v in vis_cols:
+            if vis_col not in df.columns: continue
+            section(f'Canal de visibilidad principal — {label_v}')
+
+            # Total
+            cts_total = parse_canal_rank(df[vis_col], top_n=1)
+            top_canales = [c for c, _ in sorted(cts_total.items(), key=lambda x: -x[1])[:10]]
+
+            c1, c2 = st.columns([1, 1], gap='large')
+            with c1:
+                if cts_total:
+                    top_df = pd.DataFrame(cts_total.most_common(10), columns=['Canal','N'])
+                    st.plotly_chart(hbar(list(top_df['Canal']), list(top_df['N']),
+                                         gradient=True, title=f'Top canales 1ª posición — {label_v}', h=360),
+                                    use_container_width=True, config=PC)
+
+            with c2:
+                # Canal por edad (% de cada grupo que menciona ese canal en 1ª pos)
+                age_canal = {}
+                for age in AGES:
+                    sub_a = df[df['Grupo_edad'] == age]
+                    age_canal[age] = parse_canal_rank(sub_a[vis_col], top_n=1)
+
+                if top_canales and any(age_canal.values()):
+                    fig_ca = go.Figure()
+                    _AGE_SOFT = {'18–30': '#93C5FD', '31–45': '#C4B5FD', '46+': '#FDE68A'}
+                    for age in AGES:
+                        n_age = (df['Grupo_edad'] == age).sum() or 1
+                        vals_ca = [age_canal.get(age,Counter()).get(c,0)/n_age*100 for c in top_canales[:8]]
+                        fig_ca.add_trace(go.Bar(
+                            name=age, x=top_canales[:8], y=vals_ca,
+                            marker=dict(color=_AGE_SOFT.get(age, P[2]), line=dict(width=0)),
+                        ))
+                    fig_ca.update_layout(**lay(f'Canal 1ª posición — % por grupo de edad', 360,
+                        showlegend=True, legend=dict(orientation='h', y=1.08, x=0, font=dict(size=10))),
+                        barmode='group',
+                        xaxis=dict(showgrid=False, tickfont=dict(size=9), tickangle=-20),
+                        yaxis=dict(showgrid=True, gridcolor=GRID, ticksuffix='%'),
+                    )
+                    st.plotly_chart(fig_ca, use_container_width=True, config=PC)
+
+            # Todos los canales ordenados (no solo 1ª posición) — con score ponderado
+            with st.expander(f'Ver ranking ponderado de todos los canales — {label_v}'):
+                scores = Counter()
+                for val in df[vis_col].dropna():
+                    parts = str(val).split('|')
+                    n_total = len(parts)
+                    for part in parts:
+                        part = part.strip()
+                        m = re.match(r'^(\d+)\.(.*)', part)
+                        if m:
+                            rank = int(m.group(1))
+                            canal = m.group(2).strip()
+                            if canal and len(canal) > 2:
+                                # score inverso: 1ª posición vale más
+                                weight = max(1, n_total - rank + 1)
+                                scores[canal] += weight
+                if scores:
+                    top_sc = pd.DataFrame(scores.most_common(12), columns=['Canal','Score ponderado'])
+                    st.plotly_chart(hbar(list(top_sc['Canal']), list(top_sc['Score ponderado']),
+                                         color=P[2], title='Score de canal ponderado por posición (más posición 1 = más peso)', h=360),
+                                    use_container_width=True, config=PC)
+
+            hr()
+
+        # ── INFLUENCERS ─────────────────────────────────────────────────
+        section('Influencers de referencia mencionados')
+
+        def norm_influencer(v):
+            v = str(v).strip().lower()
+            # normalización básica de nombres frecuentes
+            MAP_INF = {
+                'dulceida':'Dulceida','dulce vida':'Dulceida',
+                'laura escanes':'Laura Escanes','escanes':'Laura Escanes',
+                'pilar rubio':'Pilar Rubio',
+                'georgina':'Georgina Rodríguez','georgina rodriguez':'Georgina Rodríguez',
+                'lola indigo':'Lola Índigo','lola índigo':'Lola Índigo','miriam':'Lola Índigo',
+                'maria pombo':'María Pombo','pombo':'María Pombo',
+                'violeta':'Violeta by Mango','violeta by mango':'Violeta by Mango',
+                'marta diaz':'Marta Díaz','marta díaz':'Marta Díaz',
+                'blanca suarez':'Blanca Suárez','blanca suárez':'Blanca Suárez',
+                'sofia suescun':'Sofía Suescun','sofia':'Sofía Suescun',
+                'carlota maranon':'Carlota Marañón','carlota':'Carlota Marañón',
+                'irina shayk':'Irina Shayk','irina shiek':'Irina Shayk','irina':'Irina Shayk',
+                'emily ratajkowski':'Emily Ratajkowski','emili':'Emily Ratajkowski',
+                'kim kardashian':'Kim Kardashian','kim k':'Kim Kardashian',
+                'kendall jenner':'Kendall Jenner','kendall':'Kendall Jenner',
+                'ninguna':'— ninguna —','no':'— ninguna —','no tengo':'— ninguna —',
+                'no sigo':'— ninguna —','no uso':'— ninguna —',
+            }
+            for key, label in MAP_INF.items():
+                if key in v: return label
+            if not is_meaningful(v) or len(v) < 3: return None
+            return v.title()
+
+        inf_records = []
+        for nom_col, label_n in inf_nom:
+            if nom_col not in df.columns: continue
+            for _, row in df.iterrows():
+                val = row.get(nom_col, '')
+                ge  = row.get('Grupo_edad', '')
+                norm = norm_influencer(str(val))
+                if norm and norm != '— ninguna —' and ge in AGES:
+                    inf_records.append({'Influencer': norm, 'GE': ge, 'Categoria': label_n})
+
+        if inf_records:
+            inf_df = pd.DataFrame(inf_records)
+
+            # ── Por categoría de producto ──────────────────────────────
+            cats_inf = inf_df['Categoria'].unique().tolist()
+            for cat_inf in cats_inf:
+                sub_cat = inf_df[inf_df['Categoria'] == cat_inf]
+                top_inf_cat = sub_cat['Influencer'].value_counts().head(12)
+                if top_inf_cat.empty: continue
+
+                st.markdown(f'<div style="font-size:.75rem;font-weight:600;color:#0F6FEC;'
+                            f'text-transform:uppercase;letter-spacing:.1em;margin:12px 0 6px">'
+                            f'— {cat_inf}</div>', unsafe_allow_html=True)
+                c1, c2 = st.columns(2, gap='large')
+                with c1:
+                    st.plotly_chart(hbar(list(top_inf_cat.index), list(top_inf_cat.values),
+                                         gradient=True, title=f'Top influencers — {cat_inf}', h=380),
+                                    use_container_width=True, config=PC)
+                with c2:
+                    top8 = top_inf_cat.head(8).index.tolist()
+                    sub_cross = sub_cat[sub_cat['Influencer'].isin(top8)]
+                    inf_cross_c = pd.crosstab(sub_cross['Influencer'], sub_cross['GE'])
+                    inf_cross_c = inf_cross_c.reindex(columns=[a for a in AGES if a in inf_cross_c.columns]).fillna(0)
+                    inf_pct_c = inf_cross_c.div(inf_cross_c.sum(axis=1).replace(0,1), axis=0) * 100
+                    fig_inf_age = go.Figure()
+                    AGE_COLORS_SOFT = {'18–30': '#93C5FD', '31–45': '#C4B5FD', '46+': '#FDE68A'}
+                    for age in inf_pct_c.columns:
+                        fig_inf_age.add_trace(go.Bar(
+                            name=age, y=inf_pct_c.index.tolist(), x=inf_pct_c[age].tolist(),
+                            orientation='h',
+                            marker=dict(color=AGE_COLORS_SOFT.get(age, P[2]), line=dict(width=0)),
+                        ))
+                    fig_inf_age.update_layout(**lay(f'Distribución de edad por influencer — {cat_inf}', 380,
+                        showlegend=True, legend=dict(orientation='h', y=1.08, x=0, font=dict(size=10))),
+                        barmode='stack',
+                        xaxis=dict(showgrid=False, ticksuffix='%', range=[0,105]),
+                        yaxis=dict(showgrid=False, tickfont=dict(size=10), autorange='reversed'),
+                    )
+                    st.plotly_chart(fig_inf_age, use_container_width=True, config=PC)
+
+        # ── PILAR RUBIO ────────────────────────────────────────────────
+        hr()
+        section('Opinión sobre Pilar Rubio · Por grupo de edad')
+
+        st.markdown(
+            '<p style="font-size:.82rem;color:#6B7280;max-width:800px;margin-bottom:1rem">'
+            'Análisis de sentimiento de las respuestas abiertas sobre Pilar Rubio, '
+            'cruzado por grupo de edad.</p>',
+            unsafe_allow_html=True)
+
+        if 'Opinion_Pilar_Rubio' in df.columns:
+            # Clasificar opinión en positiva / negativa / neutral / no la conoce
+            POSITIVAS = {'bien','buena','bueno','guapa','moderna','bonita','elegante',
+                         'natural','simpática','graciosa','talentos','profesional',
+                         'encanta','gusta','favorita','perfecta','increíble','increible',
+                         'top','crack','genial','fantastica','fantástica','estupenda'}
+            NEGATIVAS = {'mal','mala','malo','gorda','fea','antipática','aburrida',
+                         'no me gusta','horrible','pésima','pesima','floja','regular',
+                         'insoportable','no me convence','no me agrada','fatal'}
+            NO_CONOCE = {'no sé quién es','no la conozco','no sé','no se quien','no se quién',
+                         'no la conozco','desconocida','no la sigo','nunca la he visto',
+                         'nose kien','nose quien','no kien'}
+
+            def classify_rubio(v):
+                if not isinstance(v, str): return 'Sin respuesta'
+                t = clean_text(v)
+                if any(nc in t for nc in NO_CONOCE): return '❓ No la conoce'
+                if not is_meaningful(v): return 'Sin respuesta'
+                # buscar palabras clave
+                words = set(t.split())
+                pos_score = sum(1 for w in words if any(p in w for p in POSITIVAS))
+                neg_score = sum(1 for w in words if any(n in w for n in NEGATIVAS))
+                if pos_score > neg_score: return '✅ Positiva'
+                if neg_score > pos_score: return '❌ Negativa'
+                return '➖ Neutral'
+
+            df['_rubio_sent'] = df['Opinion_Pilar_Rubio'].apply(classify_rubio)
+
+            sent_order = ['✅ Positiva','➖ Neutral','❌ Negativa','❓ No la conoce','Sin respuesta']
+            sent_colors = {'✅ Positiva': '#10B981', '➖ Neutral': '#6B7280',
+                           '❌ Negativa': '#EF4444', '❓ No la conoce': '#F59E0B', 'Sin respuesta': '#E5E7EB'}
+
+            c1, c2 = st.columns(2, gap='large')
+            with c1:
+                sent_total = (df['_rubio_sent'].value_counts()
+                              .drop('Sin respuesta', errors='ignore')
+                              .sort_values(ascending=True))
+                fig_rt = go.Figure(go.Bar(
+                    y=list(sent_total.index), x=list(sent_total.values), orientation='h',
+                    marker=dict(color=[sent_colors.get(s, '#ccc') for s in sent_total.index],
+                                line=dict(width=0)),
+                    text=list(sent_total.values), textposition='outside',
+                    textfont=dict(size=10, color=FONT),
+                ))
+                fig_rt.update_layout(**lay('Sentimiento total sobre Pilar Rubio', 260),
+                    xaxis=dict(showgrid=False, showticklabels=False, zeroline=False,
+                               range=[0, max(sent_total.values)*1.3] if len(sent_total) else [0,10]),
+                    yaxis=dict(showgrid=False, tickfont=dict(size=11)),
+                )
+                st.plotly_chart(fig_rt, use_container_width=True, config=PC)
+
+            with c2:
+                sent_cross = pd.crosstab(df['Grupo_edad'], df['_rubio_sent'])
+                sent_cross = sent_cross.reindex(AGES).fillna(0)
+                sent_pct = sent_cross.div(sent_cross.sum(axis=1).replace(0,1), axis=0) * 100
+                fig_rage = go.Figure()
+                for sent in [s for s in sent_order if s in sent_pct.columns]:
+                    fig_rage.add_trace(go.Bar(
+                        name=sent, x=AGES,
+                        y=[float(sent_pct.loc[a, sent]) if a in sent_pct.index else 0 for a in AGES],
+                        marker=dict(color=sent_colors.get(sent, '#ccc'), line=dict(width=0)),
+                    ))
+                fig_rage.update_layout(**lay('Sentimiento por grupo de edad (%)', 260,
+                    showlegend=True, legend=dict(orientation='h', y=1.08, x=0, font=dict(size=10))),
+                    barmode='stack',
+                    xaxis=dict(showgrid=False, tickfont=dict(size=11)),
+                    yaxis=dict(showgrid=True, gridcolor=GRID, ticksuffix='%'),
+                )
+                st.plotly_chart(fig_rage, use_container_width=True, config=PC)
+
+            # ── Text Mining — términos más frecuentes en opiniones ──────
+            hr()
+            rubio_texts = []
+            for val in df['Opinion_Pilar_Rubio'].dropna():
+                try: val = val.encode('latin1').decode('utf-8')
+                except: pass
+                if is_meaningful(val) and classify_rubio(val) != '❓ No la conoce':
+                    rubio_texts.append(clean_text(val))
+
+            if len(rubio_texts) >= 20:
+                show_text_mining(
+                    pd.Series(rubio_texts),
+                    'Temas en las opiniones sobre Pilar Rubio')
+
+            # ── Palabras más frecuentes por sentimiento ─────────────────
+            st.markdown('<div class="chart-label" style="margin-top:16px">Palabras más frecuentes por tipo de opinión</div>',
+                        unsafe_allow_html=True)
+            sent_cols_ui = st.columns(4)
+            sent_show = ['✅ Positiva','❌ Negativa','➖ Neutral','❓ No la conoce']
+            for col_obj, sent in zip(sent_cols_ui, sent_show):
+                with col_obj:
+                    s_color = sent_colors.get(sent, '#999')
+                    st.markdown(f'<div style="font-size:.68rem;font-weight:600;color:{s_color};margin-bottom:6px">{sent}</div>',
+                                unsafe_allow_html=True)
+                    sub_s = df[df['_rubio_sent'] == sent]['Opinion_Pilar_Rubio'].dropna()
+                    sub_s = sub_s[sub_s.apply(is_meaningful)]
+                    if len(sub_s) < 3:
+                        st.markdown('<div style="font-size:.7rem;color:#aaa">Sin datos suficientes</div>',
+                                    unsafe_allow_html=True)
+                        continue
+                    words_s = Counter()
+                    for val in sub_s:
+                        try: val = val.encode('latin1').decode('utf-8')
+                        except: pass
+                        for w in clean_text(val).split():
+                            if w not in STOPWORDS_ES and len(w) > 3:
+                                words_s[w] += 1
+                    for word, cnt in words_s.most_common(8):
+                        st.markdown(
+                            f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                            f'padding:2px 0;border-bottom:1px solid #F3F4F6">'
+                            f'<span style="font-size:.78rem;color:{FONT}">{word}</span>'
+                            f'<span style="font-size:.68rem;font-weight:600;color:{s_color};'
+                            f'background:{s_color}18;padding:1px 6px;border-radius:3px">{cnt}</span>'
+                            f'</div>',
+                            unsafe_allow_html=True)
+
+            # Muestra de respuestas representativas
+            with st.expander('Ver respuestas reales por sentimiento'):
+                for sent in ['✅ Positiva','❌ Negativa','❓ No la conoce','➖ Neutral']:
+                    sub_s = df[df['_rubio_sent'] == sent]['Opinion_Pilar_Rubio'].dropna()
+                    sub_s = sub_s[sub_s.apply(is_meaningful)]
+                    s_color = sent_colors.get(sent, '#999')
+                    st.markdown(f'<div style="font-size:.7rem;font-weight:600;color:{s_color};'
+                                f'margin:10px 0 4px">{sent} ({len(sub_s)} respuestas)</div>',
+                                unsafe_allow_html=True)
+                    sample = sub_s.sample(min(6, len(sub_s)), random_state=42) if len(sub_s) > 0 else []
+                    for resp in sample:
+                        try: resp = resp.encode('latin1').decode('utf-8')
+                        except: pass
+                        st.markdown(f'<p style="font-size:.8rem;color:#374151;border-left:3px solid '
+                                    f'{s_color};padding-left:10px;margin:3px 0">'
+                                    f'{resp}</p>', unsafe_allow_html=True)
+
+            df.drop(columns=['_rubio_sent'], inplace=True, errors='ignore')
+
+    except Exception as e:
+        st.error(f'Error Canales & Influencers: {e}'); st.code(traceback.format_exc())
