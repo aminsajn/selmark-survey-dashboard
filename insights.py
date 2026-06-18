@@ -1331,6 +1331,10 @@ with tab3:
                 for val in df[cc].dropna():
                     for item in str(val).split('|'):
                         item = item.strip()
+                        if lb == 'Baño':
+                            item = item.replace(
+                                'Tienda multimarca especializada en lencería',
+                                'Tienda multimarca especializada en baño')
                         if len(item)>1: cts[item]+=1
                 top = pd.DataFrame(cts.most_common(8), columns=['Canal','N'])
                 if not top.empty:
