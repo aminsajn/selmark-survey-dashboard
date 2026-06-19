@@ -2563,15 +2563,32 @@ with tab5:
                     combined = ' '.join(
                         clean_text(t) for t in texts if is_meaningful(t))
                     if not combined.strip(): return None
+                    _SW = {
+                        # artículos, prep, pronombres
+                        'que','de','la','el','lo','me','es','se','un','una','en','por',
+                        'con','al','del','mas','le','no','si','y','a','mi','su','te','ya',
+                        'muy','para','como','pero','los','las','son','hay','tan','bien',
+                        'les','nos','os','ellas','ellos','esta','este','esto','eso','esa',
+                        'ese','unos','unas','ante','bajo','desde','entre','hacia','hasta',
+                        'segun','sin','sobre','tras','o','e','u',
+                        # verbos comunes sin valor semántico
+                        'parece','porque','gusta','gustan','gosto','me','tiene','tienen',
+                        'ser','estar','ver','hace','hacen','creo','pone','ponen','da','dan',
+                        'veo','quiero','quiere','quieren','puede','pueden','es','son',
+                        'ha','han','he','hemos','habia','habian','hay','hubo','fue','fueron',
+                        'era','eran','si','no','ni','aunque','cuando','donde','mientras',
+                        'ademas','tambien','asi','ahi','aqui','alla','todo','toda','todos',
+                        'todas','algo','nada','cada','otro','otra','otros','otras','mismo',
+                        'misma','mismo','mas','menos','mucho','mucha','muchos','muchas',
+                        'poco','poca','pocos','pocas','bastante','demasiado','algo','nada',
+                        'numero','color','tipo','cosa','cosas','forma','vez','veces',
+                    }
                     wc = WordCloud(
                         width=500, height=280, background_color='white',
                         color_func=lambda *a, **kw: color,
-                        max_words=60, min_font_size=9,
+                        max_words=50, min_font_size=10,
                         collocations=False,
-                        stopwords={'que','de','la','el','lo','me','es','se','un','una',
-                                   'en','por','con','al','del','mas','le','no','si','y',
-                                   'a','mi','su','te','ya','muy','para','como','pero',
-                                   'los','las','son','hay','mas','tan','bien'},
+                        stopwords=_SW,
                     ).generate(combined)
                     fig, ax = plt.subplots(figsize=(5, 2.8), facecolor='none')
                     ax.imshow(wc, interpolation='bilinear')
@@ -2596,7 +2613,33 @@ with tab5:
                 ('_a', 'Comp. aspiracional', '#3B82F6', wc_pos),
                 ('_b', 'Comp. accesible',   '#60A5FA', wc_pos),
             ]
+
+            # Función para extraer top keywords (sustantivos/adjetivos)
+            def top_keywords(texts, n=6):
+                from collections import Counter as _C
+                _SW2 = {
+                    'que','de','la','el','lo','me','es','se','un','una','en','por',
+                    'con','al','del','mas','le','no','si','y','a','mi','su','te','ya',
+                    'muy','para','como','pero','los','las','son','hay','tan','bien',
+                    'parece','porque','gusta','tiene','ser','estar','ver','hace',
+                    'creo','pone','da','veo','quiero','puede','ha','han','he','fue',
+                    'era','aunque','cuando','donde','mientras','ademas','tambien',
+                    'asi','todo','toda','todos','todas','algo','nada','cada','otro',
+                    'otra','mismo','misma','mucho','muchos','poco','pocos','bastante',
+                    'numero','color','tipo','cosa','forma','vez','veces','mas','menos',
+                    'este','esta','esto','ese','esa','eso','ni','o','e','u',
+                }
+                words = []
+                for t in texts:
+                    if is_meaningful(t):
+                        for w in clean_text(t).split():
+                            if w not in _SW2 and len(w) > 3:
+                                words.append(w)
+                top = _C(words).most_common(n)
+                return [w for w, _ in top]
+
             wc_cols = st.columns(3)
+            wc_keyword_data = {}
             for col_obj, (suf, bname, color, txt_col) in zip(wc_cols, wc_configs):
                 with col_obj:
                     st.markdown(f'<div style="font-size:.72rem;font-weight:600;color:{color};'
@@ -2613,8 +2656,43 @@ with tab5:
                                 unsafe_allow_html=True)
                         else:
                             st.info('Sin suficientes respuestas.')
+                        wc_keyword_data[suf] = (bname, color, texts)
                     else:
                         st.info('Pocas respuestas.')
+
+            # Motivos clave por marca — resumen compacto
+            neg_texts_all = df[wc_neg].dropna().tolist() if wc_neg in df.columns else []
+            st.markdown('<br>', unsafe_allow_html=True)
+            motivo_cols3 = st.columns(3)
+            for col_obj, (suf, bname, color, txt_col) in zip(motivo_cols3, wc_configs):
+                with col_obj:
+                    if suf not in wc_keyword_data: continue
+                    _, col_hex, pos_texts = wc_keyword_data[suf]
+                    kw_pos = top_keywords(pos_texts, 5)
+                    st.markdown(
+                        f'<div style="border-left:3px solid {col_hex};padding:10px 14px;'
+                        f'background:#F9FAFB;border-radius:0 6px 6px 0">'
+                        f'<div style="font-size:.65rem;font-weight:700;color:{col_hex};'
+                        f'text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">'
+                        f'{bname} — eligen por</div>'
+                        + ''.join(f'<div style="font-size:.75rem;color:#374151;margin:3px 0">'
+                                  f'· {w.capitalize()}</div>' for w in kw_pos)
+                        + '</div>',
+                        unsafe_allow_html=True)
+
+            # Por qué los otros no gustan — resumen
+            if neg_texts_all:
+                neg_kw = top_keywords(neg_texts_all, 6)
+                st.markdown(
+                    f'<div style="margin-top:10px;border-left:3px solid #9CA3AF;padding:10px 14px;'
+                    f'background:#F9FAFB;border-radius:0 6px 6px 0">'
+                    f'<div style="font-size:.65rem;font-weight:700;color:#6B7280;'
+                    f'text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">'
+                    f'Por qué los otros no convencen</div>'
+                    + ''.join(f'<div style="font-size:.75rem;color:#374151;margin:3px 0">'
+                              f'· {w.capitalize()}</div>' for w in neg_kw)
+                    + '</div>',
+                    unsafe_allow_html=True)
 
             # Respuestas abiertas completas (expandible)
             c1, c2 = st.columns(2)
@@ -3294,8 +3372,8 @@ with tab8:
                 # Perfil de edad en zonas de oportunidad
                 age_opp = df_phys_no_sel['Grupo_edad'].value_counts().reindex(AGES).fillna(0)
                 age_all = df[buys_physical]['Grupo_edad'].value_counts().reindex(AGES).fillna(0)
-                idx_pct = (age_opp / age_opp.sum().replace(0,1) * 100).round(1)
-                base_pct= (age_all / age_all.sum().replace(0,1) * 100).round(1)
+                idx_pct = (age_opp / max(int(age_opp.sum()), 1) * 100).round(1)
+                base_pct= (age_all / max(int(age_all.sum()), 1) * 100).round(1)
                 fig_age_opp = go.Figure()
                 fig_age_opp.add_trace(go.Bar(
                     name='Sin Selmark', x=AGES, y=list(idx_pct),
@@ -3317,24 +3395,88 @@ with tab8:
                 )
                 st.plotly_chart(fig_age_opp, use_container_width=True, config=PC)
 
-            # Insight box
-            top_opp_ccaa = ccaa_opp.index[0] if len(ccaa_opp) else '—'
-            n_opp = int(ccaa_opp.iloc[0]) if len(ccaa_opp) else 0
-            n_total_phys = buys_physical.sum() or 1
-            pct_46 = (df_phys_no_sel['Grupo_edad'] == '46+').sum() / max(len(df_phys_no_sel), 1) * 100
+            # ── CCAA donde SÍ mencionan Selmark y compran físicamente → dónde abrir tienda
+            hr()
+            section('CCAA prioritarias para abrir tienda Selmark')
             st.markdown(
-                f'<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;'
-                f'padding:16px 20px;margin-top:8px">'
-                f'<div style="font-size:.75rem;font-weight:700;color:#9A3412;margin-bottom:6px;'
-                f'text-transform:uppercase;letter-spacing:.08em">Insight estratégico</div>'
-                f'<p style="font-size:.82rem;color:#7C2D12;margin:0">'
-                f'La CCAA con mayor potencial de expansión física es <strong>{top_opp_ccaa}</strong> '
-                f'({n_opp} encuestadas compran en físico sin mencionar Selmark). '
-                f'El {pct_46:.0f}% de este segmento de oportunidad tiene 46+ años, '
-                f'lo que sugiere que una estrategia de tienda física llegaría especialmente '
-                f'al segmento de mayor edad, con mayor poder adquisitivo y lealtad de marca.</p>'
-                f'</div>',
+                '<p style="font-size:.82rem;color:#6B7280;max-width:900px;margin-bottom:1rem">'
+                'Zonas donde las encuestadas <strong>compran en tienda física</strong> '
+                'y <strong>sí mencionan Selmark</strong> espontáneamente. '
+                'Son las CCAA con mayor receptividad a una tienda Selmark: la marca ya existe '
+                'en la mente del consumidor y el hábito de compra física también.</p>',
                 unsafe_allow_html=True)
+
+            ccaa_sel_phys = df_phys_sel['CCAA'].value_counts()
+            if not ccaa_sel_phys.empty:
+                c1b, c2b = st.columns(2, gap='large')
+                with c1b:
+                    labels_sp = list(ccaa_sel_phys.index[:12])[::-1]
+                    vals_sp   = list(ccaa_sel_phys.values[:12])[::-1]
+                    # penetración: % de compradores físicos de esa CCAA que mencionan Selmark
+                    pen_sp = []
+                    for ccaa_n in labels_sp:
+                        n_phys_ccaa = df[buys_physical & (df['CCAA']==ccaa_n)].shape[0] or 1
+                        n_sel_ccaa  = df_phys_sel[df_phys_sel['CCAA']==ccaa_n].shape[0]
+                        pen_sp.append(round(n_sel_ccaa/n_phys_ccaa*100, 1))
+
+                    fig_sp = go.Figure(go.Bar(
+                        y=labels_sp, x=vals_sp, orientation='h',
+                        marker=dict(color='#1E3A8A', line=dict(width=0)),
+                        text=[f'{p:.0f}%' for p in pen_sp],
+                        textposition='outside', textfont=dict(size=10, color=FONT),
+                    ))
+                    fig_sp.update_layout(**lay('Nº encuestadas: compran físicamente + mencionan Selmark', 380),
+                        xaxis=dict(showgrid=False, showticklabels=False,
+                                   range=[0, max(vals_sp)*1.4] if vals_sp else [0,10], zeroline=False),
+                        yaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                    )
+                    st.plotly_chart(fig_sp, use_container_width=True, config=PC)
+
+                with c2b:
+                    # Perfil de edad del segmento Selmark-físico
+                    age_sp = df_phys_sel['Grupo_edad'].value_counts().reindex(AGES).fillna(0)
+                    pct_sp = (age_sp / max(int(age_sp.sum()), 1) * 100).round(1)
+                    fig_age_sp = go.Figure(go.Bar(
+                        x=AGES, y=list(pct_sp),
+                        marker=dict(color=[AGE_COLORS.get(a, P[0]) for a in AGES],
+                                    line=dict(width=0)),
+                        text=[f'{v:.0f}%' for v in pct_sp],
+                        textposition='outside', textfont=dict(size=11, color=FONT),
+                    ))
+                    fig_age_sp.update_layout(**lay('Perfil de edad · compradoras físicas que mencionan Selmark', 280),
+                        xaxis=dict(showgrid=False, tickfont=dict(size=11)),
+                        yaxis=dict(showgrid=True, gridcolor=GRID, ticksuffix='%'),
+                    )
+                    st.plotly_chart(fig_age_sp, use_container_width=True, config=PC)
+
+                # Insight boxes lado a lado
+                top_sel_ccaa = ccaa_sel_phys.index[0] if len(ccaa_sel_phys) else '—'
+                n_sel_top    = int(ccaa_sel_phys.iloc[0]) if len(ccaa_sel_phys) else 0
+                top_opp_ccaa = ccaa_opp.index[0] if len(ccaa_opp) else '—'
+                pct_46_opp   = (df_phys_no_sel['Grupo_edad']=='46+').sum() / max(len(df_phys_no_sel),1) * 100
+                ins1, ins2 = st.columns(2, gap='large')
+                with ins1:
+                    st.markdown(
+                        f'<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:14px 18px">'
+                        f'<div style="font-size:.65rem;font-weight:700;color:#1E40AF;text-transform:uppercase;'
+                        f'letter-spacing:.08em;margin-bottom:5px">Prioridad 1 — Abrir tienda</div>'
+                        f'<p style="font-size:.8rem;color:#1E3A8A;margin:0">'
+                        f'<strong>{top_sel_ccaa}</strong> concentra el mayor número de consumidoras '
+                        f'que compran físicamente y ya conocen Selmark ({n_sel_top} encuestadas). '
+                        f'Apertura de tienda con alta probabilidad de conversión inmediata.</p></div>',
+                        unsafe_allow_html=True)
+                with ins2:
+                    st.markdown(
+                        f'<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:14px 18px">'
+                        f'<div style="font-size:.65rem;font-weight:700;color:#9A3412;text-transform:uppercase;'
+                        f'letter-spacing:.08em;margin-bottom:5px">Prioridad 2 — Construir notoriedad</div>'
+                        f'<p style="font-size:.8rem;color:#7C2D12;margin:0">'
+                        f'<strong>{top_opp_ccaa}</strong> tiene alta demanda física pero baja mención de Selmark. '
+                        f'El {pct_46_opp:.0f}% son 46+, el segmento de mayor fidelidad. '
+                        f'Requiere inversión en notoriedad antes de apertura.</p></div>',
+                        unsafe_allow_html=True)
+            else:
+                st.info('No hay encuestadas que compren físicamente y mencionen Selmark con los filtros actuales.')
 
         hr()
 
