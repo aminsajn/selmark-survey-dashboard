@@ -3311,6 +3311,9 @@ with tab8:
             'diseñar para cada perfil: colores, estampado, diseño y relación con la moda.</p>',
             unsafe_allow_html=True)
 
+        # Personas order shared across all sections
+        _all_persona_order = list(PERSONA_NAMES.values())
+
         # ── ANÁLISIS 1: DNA ESTÉTICO × BUYER PERSONA ─────────────────────────
         DIC_COLS = [
             ('Dic_Playa_vs_Montana',         'Playa',   'Montaña'),
@@ -3323,8 +3326,7 @@ with tab8:
         DIC_COLS = [(c, a, b) for c, a, b in DIC_COLS if c in df.columns]
 
         if 'Buyer_persona' in df.columns and DIC_COLS:
-            personas_order = ['Aspiracional', 'Tradicional', 'Hogareña', 'Exploradora']
-            personas_present = [p for p in personas_order if p in df['Buyer_persona'].values]
+            personas_present = [p for p in _all_persona_order if p in df['Buyer_persona'].values]
 
             # For each dicotomía compute % choosing option A per persona
             dna_rows = []
@@ -3404,25 +3406,16 @@ with tab8:
         renta_col = 'Renta' if 'Renta' in df.columns else None
 
         if gasto_col:
-            # Normalise spend to numeric midpoint
-            _gasto_map = {
-                'Menos de 20€': 15, 'Menos de 20': 15,
-                '20-30€': 25, '20-30': 25,
-                '30-50€': 40, '30-50': 40,
-                '50-80€': 65, '50-80': 65,
-                '50-100€': 75, '50-100': 75,
-                'Más de 80€': 100, 'Mas de 80': 100,
-                'Más de 100€': 120, 'Mas de 100': 120,
-            }
-            def parse_gasto(v):
+            # Parse numeric spend value from any format
+            def parse_gasto_num(v):
                 if pd.isna(v): return None
-                s = str(v).strip()
-                for k, val in _gasto_map.items():
-                    if k.lower() in s.lower(): return val
-                m = re.search(r'(\d+)', s)
-                return int(m.group(1)) if m else None
+                try:
+                    return float(str(v).replace('€','').replace(',','.').strip())
+                except:
+                    m = re.search(r'(\d+)', str(v))
+                    return float(m.group(1)) if m else None
 
-            df['_gasto_n'] = df[gasto_col].apply(parse_gasto)
+            df['_gasto_n'] = df[gasto_col].apply(parse_gasto_num)
 
             c1, c2 = st.columns(2, gap='large')
 
@@ -3431,7 +3424,7 @@ with tab8:
                 if 'Buyer_persona' in df.columns:
                     gasto_persona = (df.dropna(subset=['_gasto_n','Buyer_persona'])
                                      .groupby('Buyer_persona')['_gasto_n'].mean()
-                                     .reindex(personas_order).dropna())
+                                     .reindex(_all_persona_order).dropna())
                     labels_gp = list(gasto_persona.index)
                     vals_gp   = list(gasto_persona.values)
                     fig_gp = go.Figure(go.Bar(
@@ -3630,7 +3623,7 @@ with tab8:
                 si_col = [c for c in cross_ban.columns if str(c).lower().startswith('s')]
                 if si_col:
                     si_col = si_col[0]
-                    ban_cross_data = cross_ban[si_col].reindex(personas_order).dropna()
+                    ban_cross_data = cross_ban[si_col].reindex(_all_persona_order).dropna()
                     fig_bc = go.Figure(go.Bar(
                         x=list(ban_cross_data.index),
                         y=list(ban_cross_data.values),
