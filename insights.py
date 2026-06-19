@@ -998,7 +998,7 @@ _min_html = _min_img or '''<svg width="160" height="52" viewBox="0 0 160 52" xml
 st.markdown(f"""
 <div class="top-bar">
   <div style="display:flex;align-items:center;width:160px">{_sel_html}</div>
-  <div class="top-center">Consumer Insights · Research 2025</div>
+  <div class="top-center">Consumer Insights · Research 2026</div>
   <div style="display:flex;align-items:center;justify-content:flex-end;width:160px">{_min_html}</div>
 </div>
 """, unsafe_allow_html=True)
@@ -1006,7 +1006,7 @@ st.markdown(f"""
 # ── SIDEBAR ────────────────────────────────────────────────────────────────────
 st.sidebar.markdown("""
 <div style="padding:28px 20px 20px">
-  <div style="font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:#9CA3AF;margin-bottom:8px">Research 2025</div>
+  <div style="font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:#9CA3AF;margin-bottom:8px">Research 2026</div>
   <div style="font-size:1.25rem;font-weight:700;color:#111827;letter-spacing:-.02em;line-height:1.2">Consumer<br>Insights</div>
   <div style="width:24px;height:2px;background:#0F6FEC;border-radius:2px;margin-top:12px"></div>
 </div>
@@ -1295,30 +1295,34 @@ with tab3:
             ch_fis = [('Canal_fisico_deportiva','Deportiva'),('Canal_fisico_homewear','Homewear')]
             ch_onl = [('Canal_online_deportiva','Deportiva'),('Canal_online_homewear','Homewear')]
 
-        c1, c2 = st.columns(2, gap='large')
-        with c1:
+        def bucket_gasto(v):
+            try:
+                n = float(str(v).replace('€','').replace(',','.').strip())
+                if n <= 30:  return 'Hasta 30 €'
+                if n <= 60:  return '31 – 60 €'
+                if n <= 100: return '61 – 100 €'
+                return 'Más de 100 €'
+            except: return None
+        bucket_order = ['Hasta 30 €','31 – 60 €','61 – 100 €','Más de 100 €']
+
+        _spend_cols = [(sc, lb) for sc, lb in spend_pairs if sc in df.columns]
+        _ncols = 1 + len(_spend_cols)
+        _cols = st.columns(_ncols, gap='large')
+
+        with _cols[0]:
             fr = df['Frecuencia_compra_ropa'].value_counts().head(8)
             if not fr.empty:
                 st.plotly_chart(hbar(list(fr.index), list(fr.values), gradient=True,
-                                     title='Frecuencia de compra de ropa', h=310),
+                                     title='Frecuencia de compra de ropa', h=280),
                                 use_container_width=True, config=PC)
-        with c2:
-            def bucket_gasto(v):
-                try:
-                    n = float(str(v).replace('€','').replace(',','.').strip())
-                    if n <= 30:  return 'Hasta 30 €'
-                    if n <= 60:  return '31 – 60 €'
-                    if n <= 100: return '61 – 100 €'
-                    return 'Más de 100 €'
-                except: return None
-            bucket_order = ['Hasta 30 €','31 – 60 €','61 – 100 €','Más de 100 €']
-            for i, (sc, lb) in enumerate(spend_pairs):
-                if sc not in df.columns: continue
+
+        for i, (sc, lb) in enumerate(_spend_cols):
+            with _cols[i + 1]:
                 buckets = df[sc].apply(bucket_gasto).dropna()
                 sp = buckets.value_counts().reindex(bucket_order).dropna()
                 if not sp.empty:
                     st.plotly_chart(hbar(list(sp.index), list(sp.values),
-                                         gradient=True, title=f'Gasto por compra — {lb}', h=240),
+                                         gradient=True, title=f'Gasto por compra — {lb}', h=280),
                                     use_container_width=True, config=PC)
 
         hr()
@@ -3318,16 +3322,16 @@ with tab8:
         # Keep only columns that exist in the dataset
         DIC_COLS = [(c, a, b) for c, a, b in DIC_COLS if c in df.columns]
 
-        if '_persona' in df.columns and DIC_COLS:
+        if 'Buyer_persona' in df.columns and DIC_COLS:
             personas_order = ['Aspiracional', 'Tradicional', 'Hogareña', 'Exploradora']
-            personas_present = [p for p in personas_order if p in df['_persona'].values]
+            personas_present = [p for p in personas_order if p in df['Buyer_persona'].values]
 
             # For each dicotomía compute % choosing option A per persona
             dna_rows = []
             for col, opt_a, opt_b in DIC_COLS:
                 row_data = {'Dicotomía': opt_a + ' vs ' + opt_b, 'opt_a': opt_a, 'opt_b': opt_b}
                 for persona in personas_present:
-                    sub = df[df['_persona'] == persona][col].dropna()
+                    sub = df[df['Buyer_persona'] == persona][col].dropna()
                     if len(sub) == 0:
                         row_data[persona] = None
                         continue
@@ -3424,9 +3428,9 @@ with tab8:
 
             with c1:
                 # Gasto medio por buyer persona
-                if '_persona' in df.columns:
-                    gasto_persona = (df.dropna(subset=['_gasto_n','_persona'])
-                                     .groupby('_persona')['_gasto_n'].mean()
+                if 'Buyer_persona' in df.columns:
+                    gasto_persona = (df.dropna(subset=['_gasto_n','Buyer_persona'])
+                                     .groupby('Buyer_persona')['_gasto_n'].mean()
                                      .reindex(personas_order).dropna())
                     labels_gp = list(gasto_persona.index)
                     vals_gp   = list(gasto_persona.values)
@@ -3444,7 +3448,7 @@ with tab8:
                     st.plotly_chart(fig_gp, use_container_width=True, config=PC)
                 else:
                     # Fallback: gasto por grupo de edad
-                    gasto_age = (df.dropna(subset=['_gasto_n','Grupo_edad'])
+                    gasto_age = (df.dropna(subset=['_gasto_n', 'Grupo_edad'])
                                  .groupby('Grupo_edad')['_gasto_n'].mean()
                                  .reindex(AGES).dropna())
                     fig_ga = go.Figure(go.Bar(
@@ -3498,9 +3502,9 @@ with tab8:
                     st.plotly_chart(fig_gf, use_container_width=True, config=PC)
 
             # Heatmap gasto × buyer persona × grupo de edad
-            if '_persona' in df.columns:
-                _hm = (df.dropna(subset=['_gasto_n','_persona','Grupo_edad'])
-                       .groupby(['_persona','Grupo_edad'])['_gasto_n'].mean()
+            if 'Buyer_persona' in df.columns:
+                _hm = (df.dropna(subset=['_gasto_n','Buyer_persona','Grupo_edad'])
+                       .groupby(['Buyer_persona','Grupo_edad'])['_gasto_n'].mean()
                        .unstack(fill_value=0))
                 _hm = _hm.reindex(columns=[a for a in AGES if a in _hm.columns])
                 if not _hm.empty:
@@ -3520,13 +3524,13 @@ with tab8:
                     st.plotly_chart(fig_hm, use_container_width=True, config=PC)
 
             # Insight: highest value segment
-            if '_persona' in df.columns and not df.dropna(subset=['_gasto_n','_persona']).empty:
-                top_persona_val = (df.dropna(subset=['_gasto_n','_persona'])
-                                   .groupby('_persona')['_gasto_n'].mean()
+            if 'Buyer_persona' in df.columns and not df.dropna(subset=['_gasto_n','Buyer_persona']).empty:
+                top_persona_val = (df.dropna(subset=['_gasto_n','Buyer_persona'])
+                                   .groupby('Buyer_persona')['_gasto_n'].mean()
                                    .idxmax())
-                top_val_gasto   = (df.dropna(subset=['_gasto_n','_persona'])
-                                   .groupby('_persona')['_gasto_n'].mean().max())
-                pct_top = (df['_persona'] == top_persona_val).sum() / max(len(df), 1) * 100
+                top_val_gasto   = (df.dropna(subset=['_gasto_n','Buyer_persona'])
+                                   .groupby('Buyer_persona')['_gasto_n'].mean().max())
+                pct_top = (df['Buyer_persona'] == top_persona_val).sum() / max(len(df), 1) * 100
                 st.markdown(
                     f'<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;'
                     f'padding:14px 18px;margin-top:4px">'
@@ -3560,21 +3564,28 @@ with tab8:
 
             with c1:
                 if ban_arm_col:
-                    # Distribution of # bañadores en armario (numeric)
-                    def parse_ban(v):
+                    # Bucket into categories to avoid outliers stretching axis
+                    def bucket_ban(v):
                         m = re.search(r'(\d+)', str(v))
-                        return int(m.group(1)) if m else None
-                    arm_vals = df[ban_arm_col].apply(parse_ban).dropna()
-                    vc_arm   = arm_vals.value_counts().sort_index()
+                        if not m: return None
+                        n = int(m.group(1))
+                        if n <= 0 or n > 50: return None  # ignore invalid
+                        if n == 1: return '1'
+                        if n == 2: return '2'
+                        if n == 3: return '3'
+                        if n == 4: return '4'
+                        return '5+'
+                    _ban_order = ['1', '2', '3', '4', '5+']
+                    arm_buckets = df[ban_arm_col].apply(bucket_ban).dropna()
+                    vc_arm = arm_buckets.value_counts().reindex(_ban_order).dropna()
                     fig_arm = go.Figure(go.Bar(
-                        x=[str(int(k)) for k in vc_arm.index],
-                        y=list(vc_arm.values),
+                        x=list(vc_arm.index), y=list(vc_arm.values),
                         marker=dict(color=P[0], line=dict(width=0)),
                         text=list(vc_arm.values), textposition='outside',
-                        textfont=dict(size=10, color=FONT),
+                        textfont=dict(size=11, color=FONT),
                     ))
-                    fig_arm.update_layout(**lay('Bañadores en armario (nº)', 280),
-                        xaxis=dict(showgrid=False, title='Número de bañadores', tickfont=dict(size=10)),
+                    fig_arm.update_layout(**lay('Bañadores en armario', 280),
+                        xaxis=dict(showgrid=False, tickfont=dict(size=12)),
                         yaxis=dict(showgrid=True, gridcolor=GRID),
                     )
                     st.plotly_chart(fig_arm, use_container_width=True, config=PC)
@@ -3614,8 +3625,8 @@ with tab8:
                     st.plotly_chart(fig_reb, use_container_width=True, config=PC)
 
             # Cross: compra nuevo × buyer persona
-            if ban_new_col and '_persona' in df.columns:
-                cross_ban = pd.crosstab(df['_persona'], df[ban_new_col], normalize='index') * 100
+            if ban_new_col and 'Buyer_persona' in df.columns:
+                cross_ban = pd.crosstab(df['Buyer_persona'], df[ban_new_col], normalize='index') * 100
                 si_col = [c for c in cross_ban.columns if str(c).lower().startswith('s')]
                 if si_col:
                     si_col = si_col[0]
@@ -3634,26 +3645,6 @@ with tab8:
                     )
                     st.plotly_chart(fig_bc, use_container_width=True, config=PC)
 
-            # Insight
-            if ban_arm_col and ban_new_col:
-                def parse_ban2(v):
-                    m = re.search(r'(\d+)', str(v))
-                    return int(m.group(1)) if m else None
-                avg_arm = df[ban_arm_col].apply(parse_ban2).mean()
-                pct_compra_new = (df[ban_new_col].dropna()
-                                  .str.lower().str.startswith('s').sum() /
-                                  max(df[ban_new_col].notna().sum(), 1) * 100)
-                st.markdown(
-                    f'<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;'
-                    f'padding:14px 18px;margin-top:4px">'
-                    f'<div style="font-size:.65rem;font-weight:700;color:#92400E;text-transform:uppercase;'
-                    f'letter-spacing:.08em;margin-bottom:5px">Lectura rápida</div>'
-                    f'<p style="font-size:.8rem;color:#78350F;margin:0">'
-                    f'Media de <strong>{avg_arm:.1f} bañadores</strong> en el armario. '
-                    f'El <strong>{pct_compra_new:.0f}%</strong> compra bañadores nuevos cada verano. '
-                    f'La compra de bañador es recurrente y planificada — '
-                    f'comunicar colección antes del verano tiene alto retorno.</p></div>',
-                    unsafe_allow_html=True)
 
         else:
             # S2 — Deporte × producto
