@@ -1062,7 +1062,7 @@ st.sidebar.markdown(f"""
 
 lbl = 'Lencería & Baño' if is_s1 else 'Deporte & Homewear'
 
-tab1,tab2,tab3,tab4,tab5,tab6,tab7 = st.tabs(['  Perfil  ','  Lifestyle  ','  Compra  ','  Marcas  ','  Producto  ','  Color  ','  Canales & Influencers  '])
+tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8 = st.tabs(['  Perfil  ','  Lifestyle  ','  Compra  ','  Marcas  ','  Producto  ','  Color  ','  Canales & Influencers  ','  Estrategia  '])
 
 # ═══════════════════════════════════════════════════════════════════
 # TAB 1 — PERFIL
@@ -1398,6 +1398,145 @@ with tab3:
         with c2:
             if 'Factores_frenan_compra' in df.columns:
                 freq_closed_opts(df['Factores_frenan_compra'], 'Barreras de compra (% de encuestadas)', '#EF4444')
+
+        # ── HOMEWEAR — LIFESTYLE EN CASA ────────────────────────────
+        if not is_s1:
+            hr()
+            section('Homewear · Perfil de uso en casa')
+            st.markdown('<p style="font-size:.82rem;color:#6B7280;max-width:900px;margin-bottom:1rem">'
+                        'Análisis del contexto de uso de ropa de casa: oficina vs. teletrabajo, '
+                        'si se reserva ropa exclusiva para casa, qué tipo de prendas prefiere y '
+                        'comportamiento con los recados.</p>', unsafe_allow_html=True)
+
+            hw_cols1 = st.columns(3, gap='large')
+
+            # Teletrabajo vs oficina
+            with hw_cols1[0]:
+                if 'Dic_Teletrabajo_vs_Oficina' in df.columns:
+                    vc_tw = df['Dic_Teletrabajo_vs_Oficina'].value_counts()
+                    if not vc_tw.empty:
+                        fig_tw = go.Figure(go.Bar(
+                            x=list(vc_tw.index), y=list(vc_tw.values),
+                            marker=dict(color=[P[0], P[3]], line=dict(width=0)),
+                            text=list(vc_tw.values), textposition='outside',
+                            textfont=dict(size=11, color=FONT),
+                        ))
+                        fig_tw.update_layout(**lay('Entorno de trabajo', 260),
+                            xaxis=dict(showgrid=False, tickfont=dict(size=11)),
+                            yaxis=dict(showgrid=False, showticklabels=False),
+                        )
+                        st.plotly_chart(fig_tw, use_container_width=True, config=PC)
+
+            # Ropa exclusiva para casa
+            with hw_cols1[1]:
+                if 'Ropa_exclusiva_para_casa' in df.columns:
+                    vc_re = df['Ropa_exclusiva_para_casa'].value_counts()
+                    if not vc_re.empty:
+                        fig_re = go.Figure(go.Bar(
+                            x=list(vc_re.index), y=list(vc_re.values),
+                            marker=dict(color=[P[0], '#E5E7EB'], line=dict(width=0)),
+                            text=list(vc_re.values), textposition='outside',
+                            textfont=dict(size=11, color=FONT),
+                        ))
+                        fig_re.update_layout(**lay('¿Ropa exclusiva para casa?', 260),
+                            xaxis=dict(showgrid=False, tickfont=dict(size=11)),
+                            yaxis=dict(showgrid=False, showticklabels=False),
+                        )
+                        st.plotly_chart(fig_re, use_container_width=True, config=PC)
+
+            # Le molesta cambiarse para recados
+            with hw_cols1[2]:
+                if 'Molesta_cambiarse_recados' in df.columns:
+                    vc_mc = df['Molesta_cambiarse_recados'].value_counts()
+                    if not vc_mc.empty:
+                        fig_mc = go.Figure(go.Bar(
+                            x=list(vc_mc.index), y=list(vc_mc.values),
+                            marker=dict(color=[P[0], '#E5E7EB'], line=dict(width=0)),
+                            text=list(vc_mc.values), textposition='outside',
+                            textfont=dict(size=11, color=FONT),
+                        ))
+                        fig_mc.update_layout(**lay('¿Le molesta cambiarse para recados?', 260),
+                            xaxis=dict(showgrid=False, tickfont=dict(size=11)),
+                            yaxis=dict(showgrid=False, showticklabels=False),
+                        )
+                        st.plotly_chart(fig_mc, use_container_width=True, config=PC)
+
+            hw_cols2 = st.columns(2, gap='large')
+
+            # Durabilidad buscada
+            with hw_cols2[0]:
+                if 'Duracion_buscada' in df.columns:
+                    vc_dur = df['Duracion_buscada'].value_counts()
+                    if not vc_dur.empty:
+                        labels_r = list(vc_dur.index)[::-1]
+                        vals_r   = list(vc_dur.values)[::-1]
+                        fig_dur = go.Figure(go.Bar(
+                            y=labels_r, x=vals_r, orientation='h',
+                            marker=dict(color=P[0], line=dict(width=0)),
+                            text=vals_r, textposition='outside',
+                            textfont=dict(size=10, color=FONT),
+                        ))
+                        fig_dur.update_layout(**lay('Durabilidad buscada en homewear', 260),
+                            xaxis=dict(showgrid=False, showticklabels=False,
+                                       range=[0, max(vals_r)*1.3] if vals_r else [0,10], zeroline=False),
+                            yaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                        )
+                        st.plotly_chart(fig_dur, use_container_width=True, config=PC)
+
+            # Tipo de prendas para casa (texto abierto → frecuencia normalizada)
+            with hw_cols2[1]:
+                if 'Tipo_prendas_para_casa' in df.columns:
+                    from collections import Counter as _C
+                    tipo_cts = _C()
+                    for val in df['Tipo_prendas_para_casa'].dropna():
+                        t = clean_text(val)
+                        if t and len(t) > 2:
+                            # normalizar variantes comunes
+                            t = t.replace('chandal','chándal').replace('chandalc','chándal')
+                            tipo_cts[t.title()] += 1
+                    if tipo_cts:
+                        top_tipo = tipo_cts.most_common(10)
+                        labels_r = [x[0] for x in top_tipo][::-1]
+                        vals_r   = [x[1] for x in top_tipo][::-1]
+                        fig_tipo = go.Figure(go.Bar(
+                            y=labels_r, x=vals_r, orientation='h',
+                            marker=dict(color=P[2], line=dict(width=0)),
+                            text=vals_r, textposition='outside',
+                            textfont=dict(size=10, color=FONT),
+                        ))
+                        fig_tipo.update_layout(**lay('Tipo de prenda preferida en casa', 300),
+                            xaxis=dict(showgrid=False, showticklabels=False,
+                                       range=[0, max(vals_r)*1.3] if vals_r else [0,10], zeroline=False),
+                            yaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                        )
+                        st.plotly_chart(fig_tipo, use_container_width=True, config=PC)
+
+            # Cruce: Teletrabajo × Ropa exclusiva para casa × Grupo de edad
+            if all(c in df.columns for c in ['Dic_Teletrabajo_vs_Oficina','Ropa_exclusiva_para_casa']):
+                hr()
+                st.markdown('<div class="chart-label">Perfil de uso — cruce entorno laboral × ropa exclusiva para casa</div>',
+                            unsafe_allow_html=True)
+                cross_hw = pd.crosstab(df['Dic_Teletrabajo_vs_Oficina'],
+                                       df['Ropa_exclusiva_para_casa'])
+                pct_hw = cross_hw.div(cross_hw.sum(axis=1).replace(0,1), axis=0) * 100
+                fig_hw_cross = go.Figure()
+                for col_name in pct_hw.columns:
+                    fig_hw_cross.add_trace(go.Bar(
+                        name=str(col_name),
+                        x=pct_hw.index.tolist(),
+                        y=pct_hw[col_name].tolist(),
+                        marker=dict(color=P[0] if str(col_name).startswith('S') else '#E5E7EB',
+                                    line=dict(width=0)),
+                        text=[f'{v:.0f}%' for v in pct_hw[col_name]],
+                        textposition='inside', textfont=dict(size=11),
+                    ))
+                fig_hw_cross.update_layout(**lay('', 260,
+                    showlegend=True, legend=dict(orientation='h', y=1.06, x=0, font=dict(size=10))),
+                    barmode='stack',
+                    xaxis=dict(showgrid=False, tickfont=dict(size=11)),
+                    yaxis=dict(showgrid=True, gridcolor=GRID, ticksuffix='%'),
+                )
+                st.plotly_chart(fig_hw_cross, use_container_width=True, config=PC)
 
         # ── TALLAS ──────────────────────────────────────────────────
         hr()
@@ -2406,46 +2545,76 @@ with tab5:
             fig_seg.update_layout(showlegend=True)
             st.plotly_chart(fig_seg, use_container_width=True, config=PC)
 
-            # ─ Text mining motivos ────────────────────────────────────────
+            # ─ Nubes de palabras por marca ────────────────────────────────
             hr()
             section(f'¿Por qué eligen cada producto? — {lbl}')
+            st.markdown('<p style="font-size:.82rem;color:#6B7280;margin-bottom:1rem">'
+                        'Nube de palabras con los motivos de elección por tipo de marca. '
+                        'El tamaño refleja la frecuencia de cada término.</p>',
+                        unsafe_allow_html=True)
 
-            # Mining por tipo de marca
-            brand_tab = st.tabs(['✦ Selmark','✦ Comp. aspiracional','✦ Comp. accesible',
-                                  '✦ Por qué los otros gustan menos'])
-            with brand_tab[0]:
-                sel_codes = [c for c in raw_cts if c.endswith('_s')]
-                sel_mask  = df[pc].apply(lambda v: any(
-                    str(v).endswith(c) or (':'in str(v) and str(v).split(':',1)[1].strip()==c)
-                    for c in sel_codes))
-                if sel_mask.sum() > 5 and wc_pos in df.columns:
-                    show_text_mining(df[sel_mask][wc_pos], 'Razones al elegir Selmark')
-                else:
-                    st.info('Pocas respuestas en este segmento.')
+            def make_wordcloud_img(texts, color):
+                try:
+                    from wordcloud import WordCloud
+                    import matplotlib
+                    matplotlib.use('Agg')
+                    import matplotlib.pyplot as plt
+                    import io, base64
+                    combined = ' '.join(
+                        clean_text(t) for t in texts if is_meaningful(t))
+                    if not combined.strip(): return None
+                    wc = WordCloud(
+                        width=500, height=280, background_color='white',
+                        color_func=lambda *a, **kw: color,
+                        max_words=60, min_font_size=9,
+                        collocations=False,
+                        stopwords={'que','de','la','el','lo','me','es','se','un','una',
+                                   'en','por','con','al','del','mas','le','no','si','y',
+                                   'a','mi','su','te','ya','muy','para','como','pero',
+                                   'los','las','son','hay','mas','tan','bien'},
+                    ).generate(combined)
+                    fig, ax = plt.subplots(figsize=(5, 2.8), facecolor='none')
+                    ax.imshow(wc, interpolation='bilinear')
+                    ax.axis('off')
+                    buf = io.BytesIO()
+                    plt.savefig(buf, format='png', bbox_inches='tight',
+                                transparent=True, dpi=120)
+                    plt.close(fig)
+                    buf.seek(0)
+                    return base64.b64encode(buf.read()).decode()
+                except Exception:
+                    return None
 
-            with brand_tab[1]:
-                asc_codes = [c for c in raw_cts if c.endswith('_a')]
-                asc_mask  = df[pc].apply(lambda v: any(
-                    str(v).endswith(c) or (':'in str(v) and str(v).split(':',1)[1].strip()==c)
-                    for c in asc_codes))
-                if asc_mask.sum() > 5 and wc_pos in df.columns:
-                    show_text_mining(df[asc_mask][wc_pos], 'Razones al elegir Comp. aspiracional')
-                else:
-                    st.info('Pocas respuestas en este segmento.')
+            def brand_mask(suffix):
+                codes = [c for c in raw_cts if c.endswith(suffix)]
+                return df[pc].apply(lambda v: any(
+                    str(v).endswith(c) or (':' in str(v) and str(v).split(':',1)[1].strip()==c)
+                    for c in codes))
 
-            with brand_tab[2]:
-                low_codes = [c for c in raw_cts if c.endswith('_b')]
-                low_mask  = df[pc].apply(lambda v: any(
-                    str(v).endswith(c) or (':'in str(v) and str(v).split(':',1)[1].strip()==c)
-                    for c in low_codes))
-                if low_mask.sum() > 5 and wc_pos in df.columns:
-                    show_text_mining(df[low_mask][wc_pos], 'Razones al elegir Comp. accesible')
-                else:
-                    st.info('Pocas respuestas en este segmento.')
-
-            with brand_tab[3]:
-                if wc_neg in df.columns:
-                    show_text_mining(df[wc_neg], 'Razones de rechazo a los otros productos')
+            wc_configs = [
+                ('_s', 'Selmark',           '#1E3A8A', wc_pos),
+                ('_a', 'Comp. aspiracional', '#3B82F6', wc_pos),
+                ('_b', 'Comp. accesible',   '#60A5FA', wc_pos),
+            ]
+            wc_cols = st.columns(3)
+            for col_obj, (suf, bname, color, txt_col) in zip(wc_cols, wc_configs):
+                with col_obj:
+                    st.markdown(f'<div style="font-size:.72rem;font-weight:600;color:{color};'
+                                f'text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">'
+                                f'{bname}</div>', unsafe_allow_html=True)
+                    mask = brand_mask(suf)
+                    if mask.sum() > 5 and txt_col in df.columns:
+                        texts = df[mask][txt_col].dropna().tolist()
+                        img64 = make_wordcloud_img(texts, color)
+                        if img64:
+                            st.markdown(
+                                f'<img src="data:image/png;base64,{img64}" '
+                                f'style="width:100%;border-radius:8px;border:1px solid #E5E7EB">',
+                                unsafe_allow_html=True)
+                        else:
+                            st.info('Sin suficientes respuestas.')
+                    else:
+                        st.info('Pocas respuestas.')
 
             # Respuestas abiertas completas (expandible)
             c1, c2 = st.columns(2)
@@ -2930,21 +3099,21 @@ with tab7:
             def classify_rubio(v):
                 if not isinstance(v, str): return 'Sin respuesta'
                 t = clean_text(v)
-                if any(nc in t for nc in NO_CONOCE): return '❓ No la conoce'
+                if any(nc in t for nc in NO_CONOCE): return 'No la conoce'
                 if not is_meaningful(v): return 'Sin respuesta'
                 # buscar palabras clave
                 words = set(t.split())
                 pos_score = sum(1 for w in words if any(p in w for p in POSITIVAS))
                 neg_score = sum(1 for w in words if any(n in w for n in NEGATIVAS))
-                if pos_score > neg_score: return '✅ Positiva'
-                if neg_score > pos_score: return '❌ Negativa'
-                return '➖ Neutral'
+                if pos_score > neg_score: return 'Positiva'
+                if neg_score > pos_score: return 'Negativa'
+                return 'Neutral'
 
             df['_rubio_sent'] = df['Opinion_Pilar_Rubio'].apply(classify_rubio)
 
-            sent_order = ['✅ Positiva','➖ Neutral','❌ Negativa','❓ No la conoce','Sin respuesta']
-            sent_colors = {'✅ Positiva': '#10B981', '➖ Neutral': '#6B7280',
-                           '❌ Negativa': '#EF4444', '❓ No la conoce': '#F59E0B', 'Sin respuesta': '#E5E7EB'}
+            sent_order = ['Positiva','Neutral','Negativa','No la conoce','Sin respuesta']
+            sent_colors = {'Positiva': '#6EE7B7', 'Neutral': '#CBD5E1',
+                           'Negativa': '#FCA5A5', 'No la conoce': '#FDE68A', 'Sin respuesta': '#F3F4F6'}
 
             c1, c2 = st.columns(2, gap='large')
             with c1:
@@ -3052,3 +3221,247 @@ with tab7:
 
     except Exception as e:
         st.error(f'Error Canales & Influencers: {e}'); st.code(traceback.format_exc())
+
+# ═══════════════════════════════════════════════════════════════════
+# TAB 8 — ANÁLISIS ESTRATÉGICO
+# ═══════════════════════════════════════════════════════════════════
+with tab8:
+    try:
+        st.markdown(
+            '<p style="font-size:.85rem;color:#6B7280;max-width:960px;margin-bottom:1.5rem">'
+            'Análisis cruzados orientados a decisión: oportunidades de expansión física, '
+            'segmentos de alto potencial y gaps de cobertura de Selmark.</p>',
+            unsafe_allow_html=True)
+
+        # ── 1. ZONAS DE EXPANSIÓN FÍSICA ────────────────────────────────────
+        section('Oportunidad de expansión física por CCAA')
+        st.markdown(
+            '<p style="font-size:.82rem;color:#6B7280;max-width:900px;margin-bottom:1rem">'
+            'CCAA donde las encuestadas compran lencería/baño en tienda física pero '
+            '<strong>no mencionan Selmark</strong> espontáneamente. Son zonas con demanda '
+            'física probada y baja notoriedad de Selmark → mayor potencial de expansión.</p>',
+            unsafe_allow_html=True)
+
+        if is_s1:
+            fis_cols  = ['Canal_fisico_lenceria','Canal_fisico_bano']
+            tom_cols_e = ['Top_of_mind_lenceria','Otras_marcas_lenceria',
+                          'Top_of_mind_bano','Otras_marcas_bano']
+        else:
+            fis_cols  = ['Canal_fisico_deportiva','Canal_fisico_homewear']
+            tom_cols_e = ['Top_of_mind_deporte','Otras_marcas_deporte',
+                          'Top_of_mind_homewear','Otras_marcas_homewear']
+
+        # Quién compra físicamente
+        buys_physical = df[fis_cols].apply(
+            lambda col: col.dropna().str.lower().str.contains('tienda|almacen|física|corte|mercer|outlet|corseter',
+                                                               regex=True, na=False)
+        ).any(axis=1)
+
+        # Quién menciona Selmark
+        def mentions_sel(row):
+            for c in tom_cols_e:
+                if c in row.index and pd.notna(row[c]) and 'selmark' in str(row[c]).lower():
+                    return True
+            return False
+        mentions_selmark_mask = df.apply(mentions_sel, axis=1)
+
+        df_phys_no_sel = df[buys_physical & ~mentions_selmark_mask]
+        df_phys_sel    = df[buys_physical & mentions_selmark_mask]
+
+        ccaa_opp = df_phys_no_sel['CCAA'].value_counts()
+        ccaa_kno = df_phys_sel['CCAA'].value_counts()
+
+        if not ccaa_opp.empty:
+            c1, c2 = st.columns(2, gap='large')
+            with c1:
+                labels_r = list(ccaa_opp.index[:12])[::-1]
+                vals_r   = list(ccaa_opp.values[:12])[::-1]
+                pct_r    = [round(v / max(df[df['CCAA']==l].shape[0],1)*100, 1) for l,v in zip(labels_r, vals_r)]
+                fig_opp = go.Figure(go.Bar(
+                    y=labels_r, x=vals_r, orientation='h',
+                    marker=dict(color='#F97316', line=dict(width=0)),
+                    text=[f'{p:.0f}%' for p in pct_r],
+                    textposition='outside', textfont=dict(size=10, color=FONT),
+                ))
+                fig_opp.update_layout(**lay('Compran físicamente, NO mencionan Selmark (nº encuestadas)', 380),
+                    xaxis=dict(showgrid=False, showticklabels=False,
+                               range=[0, max(vals_r)*1.35] if vals_r else [0,10], zeroline=False),
+                    yaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                )
+                st.plotly_chart(fig_opp, use_container_width=True, config=PC)
+
+            with c2:
+                # Perfil de edad en zonas de oportunidad
+                age_opp = df_phys_no_sel['Grupo_edad'].value_counts().reindex(AGES).fillna(0)
+                age_all = df[buys_physical]['Grupo_edad'].value_counts().reindex(AGES).fillna(0)
+                idx_pct = (age_opp / age_opp.sum().replace(0,1) * 100).round(1)
+                base_pct= (age_all / age_all.sum().replace(0,1) * 100).round(1)
+                fig_age_opp = go.Figure()
+                fig_age_opp.add_trace(go.Bar(
+                    name='Sin Selmark', x=AGES, y=list(idx_pct),
+                    marker=dict(color='#F97316', line=dict(width=0)),
+                    text=[f'{v:.0f}%' for v in idx_pct], textposition='outside',
+                    textfont=dict(size=10),
+                ))
+                fig_age_opp.add_trace(go.Bar(
+                    name='Base compradores físicos', x=AGES, y=list(base_pct),
+                    marker=dict(color='#CBD5E1', line=dict(width=0)),
+                    text=[f'{v:.0f}%' for v in base_pct], textposition='outside',
+                    textfont=dict(size=10),
+                ))
+                fig_age_opp.update_layout(**lay('Perfil de edad · zona de oportunidad vs. base', 300,
+                    showlegend=True, legend=dict(orientation='h', y=1.08, x=0, font=dict(size=10))),
+                    barmode='group',
+                    xaxis=dict(showgrid=False, tickfont=dict(size=11)),
+                    yaxis=dict(showgrid=True, gridcolor=GRID, ticksuffix='%'),
+                )
+                st.plotly_chart(fig_age_opp, use_container_width=True, config=PC)
+
+            # Insight box
+            top_opp_ccaa = ccaa_opp.index[0] if len(ccaa_opp) else '—'
+            n_opp = int(ccaa_opp.iloc[0]) if len(ccaa_opp) else 0
+            n_total_phys = buys_physical.sum() or 1
+            pct_46 = (df_phys_no_sel['Grupo_edad'] == '46+').sum() / max(len(df_phys_no_sel), 1) * 100
+            st.markdown(
+                f'<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;'
+                f'padding:16px 20px;margin-top:8px">'
+                f'<div style="font-size:.75rem;font-weight:700;color:#9A3412;margin-bottom:6px;'
+                f'text-transform:uppercase;letter-spacing:.08em">Insight estratégico</div>'
+                f'<p style="font-size:.82rem;color:#7C2D12;margin:0">'
+                f'La CCAA con mayor potencial de expansión física es <strong>{top_opp_ccaa}</strong> '
+                f'({n_opp} encuestadas compran en físico sin mencionar Selmark). '
+                f'El {pct_46:.0f}% de este segmento de oportunidad tiene 46+ años, '
+                f'lo que sugiere que una estrategia de tienda física llegaría especialmente '
+                f'al segmento de mayor edad, con mayor poder adquisitivo y lealtad de marca.</p>'
+                f'</div>',
+                unsafe_allow_html=True)
+
+        hr()
+
+        # ── 2. DEPORTE × SELMARK ────────────────────────────────────────────
+        section('Perfil deportivo · Oportunidad para la línea sport de Selmark')
+        st.markdown(
+            '<p style="font-size:.82rem;color:#6B7280;max-width:900px;margin-bottom:1rem">'
+            'Análisis de hábitos deportivos de la muestra: qué deporte practican, '
+            'con qué frecuencia y qué perfil de edad tiene cada deporte. '
+            'Útil para orientar la propuesta de valor de la línea deportiva.</p>',
+            unsafe_allow_html=True)
+
+        dep_col = 'Deporte_que_realiza' if 'Deporte_que_realiza' in df.columns else None
+        frec_col = 'Veces_deporte_semana' if 'Veces_deporte_semana' in df.columns else None
+
+        if dep_col:
+            # Normalizar y contar deportes
+            dep_cts = Counter()
+            dep_rows = []
+            for idx_r, row in df.iterrows():
+                val = row.get(dep_col, '')
+                if pd.isna(val): continue
+                for dep in str(val).split('|'):
+                    dep = dep.strip().title()
+                    dep_norm = {
+                        'Running': 'Running/Correr', 'Correr': 'Running/Correr',
+                        'Gimnasio': 'Gimnasio', 'Yoga': 'Yoga',
+                        'Natacion': 'Natación', 'Natación': 'Natación',
+                        'Pilates': 'Pilates', 'Caminar': 'Caminar/Senderismo',
+                        'Senderismo': 'Caminar/Senderismo', 'Ciclismo': 'Ciclismo',
+                        'Padel': 'Pádel', 'Pádel': 'Pádel', 'Tenis': 'Tenis',
+                        'Ninguno': None,
+                    }.get(dep, dep if dep and dep != 'Nan' else None)
+                    if dep_norm:
+                        dep_cts[dep_norm] += 1
+                        dep_rows.append({'Deporte': dep_norm, 'GE': row.get('Grupo_edad','')})
+
+            dep_df = pd.DataFrame(dep_rows)
+            top_deps = [d for d,_ in dep_cts.most_common(8)]
+
+            c1, c2 = st.columns(2, gap='large')
+            with c1:
+                top_items = dep_cts.most_common(10)
+                labels_r = [x[0] for x in top_items][::-1]
+                vals_r   = [x[1] for x in top_items][::-1]
+                n_enc    = len(df) or 1
+                pct_dep  = [round(v/n_enc*100,1) for v in vals_r]
+                fig_dep = go.Figure(go.Bar(
+                    y=labels_r, x=vals_r, orientation='h',
+                    marker=dict(color=P[0], line=dict(width=0)),
+                    text=[f'{p:.0f}%' for p in pct_dep],
+                    textposition='outside', textfont=dict(size=10, color=FONT),
+                ))
+                fig_dep.update_layout(**lay('Deportes más practicados (% encuestadas)', 360),
+                    xaxis=dict(showgrid=False, showticklabels=False,
+                               range=[0, max(vals_r)*1.35] if vals_r else [0,10], zeroline=False),
+                    yaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                )
+                st.plotly_chart(fig_dep, use_container_width=True, config=PC)
+
+            with c2:
+                if frec_col:
+                    # Normalizar frecuencia numérica
+                    def norm_frec(v):
+                        m = re.search(r'(\d+)', str(v))
+                        return int(m.group(1)) if m else None
+                    df['_frec_num'] = df[frec_col].apply(norm_frec)
+                    frec_age = df.groupby('Grupo_edad')['_frec_num'].mean().reindex(AGES)
+                    fig_frec = go.Figure(go.Bar(
+                        x=AGES, y=list(frec_age.values),
+                        marker=dict(color=[AGE_COLORS.get(a, P[0]) for a in AGES],
+                                    line=dict(width=0)),
+                        text=[f'{v:.1f}x/sem' if pd.notna(v) else '' for v in frec_age],
+                        textposition='outside', textfont=dict(size=11, color=FONT),
+                    ))
+                    fig_frec.update_layout(**lay('Frecuencia media de deporte por grupo de edad (veces/semana)', 280),
+                        xaxis=dict(showgrid=False, tickfont=dict(size=11)),
+                        yaxis=dict(showgrid=True, gridcolor=GRID, tickfont=dict(size=10)),
+                    )
+                    st.plotly_chart(fig_frec, use_container_width=True, config=PC)
+                    df.drop(columns=['_frec_num'], inplace=True, errors='ignore')
+
+            # Deporte × grupo de edad — barras agrupadas
+            if not dep_df.empty and top_deps:
+                dep_age_pcts = {}
+                for age in AGES:
+                    n_age = (df['Grupo_edad'] == age).sum() or 1
+                    sub_a = dep_df[dep_df['GE'] == age]
+                    dep_age_pcts[age] = {d: sub_a[sub_a['Deporte']==d].shape[0]/n_age*100
+                                         for d in top_deps}
+
+                fig_da = go.Figure()
+                for age in AGES:
+                    fig_da.add_trace(go.Bar(
+                        name=age, x=top_deps,
+                        y=[round(dep_age_pcts[age].get(d,0),1) for d in top_deps],
+                        marker=dict(color=AGE_COLORS.get(age, P[2]), line=dict(width=0)),
+                        text=[f'{dep_age_pcts[age].get(d,0):.0f}%' for d in top_deps],
+                        textposition='outside', textfont=dict(size=9),
+                    ))
+                fig_da.update_layout(**lay('% practicantes por deporte y grupo de edad', 380,
+                    showlegend=True, legend=dict(orientation='h', y=1.06, x=0, font=dict(size=10))),
+                    barmode='group',
+                    xaxis=dict(showgrid=False, tickfont=dict(size=10), tickangle=-20),
+                    yaxis=dict(showgrid=True, gridcolor=GRID, ticksuffix='%'),
+                )
+                st.plotly_chart(fig_da, use_container_width=True, config=PC)
+
+            # Insight box deporte
+            top_dep_name = dep_cts.most_common(1)[0][0] if dep_cts else '—'
+            pct_young_dep = (dep_df[dep_df['GE']=='18–30'].shape[0] /
+                             max((df['Grupo_edad']=='18–30').sum(), 1) * 100) if not dep_df.empty else 0
+            pct_mid_dep   = (dep_df[dep_df['GE']=='31–45'].shape[0] /
+                             max((df['Grupo_edad']=='31–45').sum(), 1) * 100) if not dep_df.empty else 0
+            st.markdown(
+                f'<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;'
+                f'padding:16px 20px;margin-top:8px">'
+                f'<div style="font-size:.75rem;font-weight:700;color:#1E40AF;margin-bottom:6px;'
+                f'text-transform:uppercase;letter-spacing:.08em">Insight estratégico</div>'
+                f'<p style="font-size:.82rem;color:#1E3A8A;margin:0">'
+                f'El deporte más practicado es <strong>{top_dep_name}</strong>. '
+                f'El grupo 18-30 tiene una tasa de práctica deportiva del {pct_young_dep:.0f}% '
+                f'y el grupo 31-45 del {pct_mid_dep:.0f}%. '
+                f'La línea sport de Selmark tiene mayor potencial de penetración en el segmento '
+                f'31-45 que combina alta actividad deportiva con mayor poder adquisitivo.'
+                f'</p></div>',
+                unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f'Error Estrategia: {e}'); st.code(traceback.format_exc())
